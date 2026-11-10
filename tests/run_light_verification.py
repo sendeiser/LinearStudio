@@ -81,3 +81,4 @@ with open(report_path, "w", encoding="utf-8") as f:
 
 print("LIGHT MODE VERIFICATION COMPLETED")
 print(json.dumps(verification_results, indent=2))
+
