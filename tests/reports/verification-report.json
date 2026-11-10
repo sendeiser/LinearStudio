@@ -1,0 +1,131 @@
+[
+  {
+    "viewport": "desktop",
+    "dimensions": "1440x900",
+    "screenshot": "verified-desktop-1440.png",
+    "overflow_info": {
+      "docWidth": 1440,
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "hasOverflow": false,
+      "overflowingElements": [
+        {
+          "tag": "SECTION",
+          "className": "kanban-col w-72 shrink-0 flex flex-col max-h-full ",
+          "right": 1466,
+          "docWidth": 1440
+        },
+        {
+          "tag": "DIV",
+          "className": "p-3 flex items-center justify-between border-b bor",
+          "right": 1465,
+          "docWidth": 1440
+        },
+        {
+          "tag": "BUTTON",
+          "className": "btn-add-to-col p-1 rounded hover:bg-surface-elevat",
+          "right": 1453,
+          "docWidth": 1440
+        },
+        {
+          "tag": "SPAN",
+          "className": "material-symbols-outlined text-[16px]",
+          "right": 1449,
+          "docWidth": 1440
+        },
+        {
+          "tag": "DIV",
+          "className": "col-cards flex-1 overflow-y-auto p-2.5 flex flex-c",
+          "right": 1465,
+          "docWidth": 1440
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "tablet",
+    "dimensions": "768x1024",
+    "screenshot": "verified-tablet-768.png",
+    "overflow_info": {
+      "docWidth": 768,
+      "scrollWidth": 768,
+      "bodyScrollWidth": 768,
+      "hasOverflow": false,
+      "overflowingElements": [
+        {
+          "tag": "DIV",
+          "className": "hidden sm:flex items-center gap-3 text-text-muted ",
+          "right": 973,
+          "docWidth": 768
+        },
+        {
+          "tag": "SPAN",
+          "className": "flex items-center gap-1 text-accent",
+          "right": 807,
+          "docWidth": 768
+        },
+        {
+          "tag": "SPAN",
+          "className": "material-symbols-outlined text-[12px]",
+          "right": 770,
+          "docWidth": 768
+        },
+        {
+          "tag": "SPAN",
+          "className": "text-border-subtle",
+          "right": 826,
+          "docWidth": 768
+        },
+        {
+          "tag": "SPAN",
+          "className": "flex items-center gap-1 text-brand",
+          "right": 973,
+          "docWidth": 768
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "mobile",
+    "dimensions": "375x812",
+    "screenshot": "verified-mobile-375.png",
+    "overflow_info": {
+      "docWidth": 375,
+      "scrollWidth": 375,
+      "bodyScrollWidth": 375,
+      "hasOverflow": false,
+      "overflowingElements": [
+        {
+          "tag": "SECTION",
+          "className": "kanban-col w-72 shrink-0 flex flex-col max-h-full ",
+          "right": 602,
+          "docWidth": 375
+        },
+        {
+          "tag": "DIV",
+          "className": "p-3 flex items-center justify-between border-b bor",
+          "right": 601,
+          "docWidth": 375
+        },
+        {
+          "tag": "DIV",
+          "className": "flex items-center gap-2",
+          "right": 433,
+          "docWidth": 375
+        },
+        {
+          "tag": "SPAN",
+          "className": "font-semibold text-xs text-text-primary",
+          "right": 407,
+          "docWidth": 375
+        },
+        {
+          "tag": "SPAN",
+          "className": "col-count font-mono text-[10px] px-1.5 py-0.2 roun",
+          "right": 433,
+          "docWidth": 375
+        }
+      ]
+    }
+  }
+]

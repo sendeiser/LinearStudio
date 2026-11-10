@@ -1,0 +1,131 @@
+[
+  {
+    "viewport": "desktop",
+    "dimensions": "1440x900",
+    "screenshot": "diagnostic-desktop-1440.png",
+    "overflow_info": {
+      "docWidth": 1440,
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "hasOverflow": false,
+      "overflowingElements": [
+        {
+          "tag": "SECTION",
+          "className": "w-72 shrink-0 flex flex-col max-h-full rounded-lg ",
+          "right": 1446,
+          "docWidth": 1440
+        },
+        {
+          "tag": "DIV",
+          "className": "p-2.5 flex items-center justify-between border-b b",
+          "right": 1445,
+          "docWidth": 1440
+        },
+        {
+          "tag": "DIV",
+          "className": "flex-1 overflow-y-auto p-2 flex flex-col gap-2",
+          "right": 1445,
+          "docWidth": 1440
+        },
+        {
+          "tag": "SECTION",
+          "className": "w-72 shrink-0 flex flex-col max-h-full rounded-lg ",
+          "right": 1748,
+          "docWidth": 1440
+        },
+        {
+          "tag": "DIV",
+          "className": "p-2.5 flex items-center justify-between border-b b",
+          "right": 1747,
+          "docWidth": 1440
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "tablet",
+    "dimensions": "768x1024",
+    "screenshot": "diagnostic-tablet-768.png",
+    "overflow_info": {
+      "docWidth": 768,
+      "scrollWidth": 768,
+      "bodyScrollWidth": 768,
+      "hasOverflow": false,
+      "overflowingElements": [
+        {
+          "tag": "DIV",
+          "className": "flex items-center gap-3 shrink-0",
+          "right": 891,
+          "docWidth": 768
+        },
+        {
+          "tag": "BUTTON",
+          "className": "flex items-center gap-1.5 px-3 py-1 rounded bg-inv",
+          "right": 842,
+          "docWidth": 768
+        },
+        {
+          "tag": "SPAN",
+          "className": "",
+          "right": 830,
+          "docWidth": 768
+        },
+        {
+          "tag": "DIV",
+          "className": "flex items-center gap-2 pl-2 border-l border-outli",
+          "right": 891,
+          "docWidth": 768
+        },
+        {
+          "tag": "IMG",
+          "className": "w-7 h-7 rounded-full border border-outline-variant",
+          "right": 891,
+          "docWidth": 768
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "mobile",
+    "dimensions": "375x812",
+    "screenshot": "diagnostic-mobile-375.png",
+    "overflow_info": {
+      "docWidth": 375,
+      "scrollWidth": 375,
+      "bodyScrollWidth": 375,
+      "hasOverflow": false,
+      "overflowingElements": [
+        {
+          "tag": "DIV",
+          "className": "flex items-center gap-3 flex-1 max-w-md",
+          "right": 620,
+          "docWidth": 375
+        },
+        {
+          "tag": "DIV",
+          "className": "flex items-center gap-1 border-l border-outline-va",
+          "right": 620,
+          "docWidth": 375
+        },
+        {
+          "tag": "BUTTON",
+          "className": "text-on-surface font-medium border-b-2 border-prim",
+          "right": 447,
+          "docWidth": 375
+        },
+        {
+          "tag": "SPAN",
+          "className": "material-symbols-outlined text-[16px] text-primary",
+          "right": 389,
+          "docWidth": 375
+        },
+        {
+          "tag": "SPAN",
+          "className": "",
+          "right": 437,
+          "docWidth": 375
+        }
+      ]
+    }
+  }
+]

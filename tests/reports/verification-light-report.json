@@ -1,0 +1,35 @@
+[
+  {
+    "viewport": "desktop",
+    "dimensions": "1440x900",
+    "screenshot": "verified-light-desktop-1440.png",
+    "overflow_info": {
+      "docWidth": 1440,
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "hasOverflow": false
+    }
+  },
+  {
+    "viewport": "tablet",
+    "dimensions": "768x1024",
+    "screenshot": "verified-light-tablet-768.png",
+    "overflow_info": {
+      "docWidth": 768,
+      "scrollWidth": 768,
+      "bodyScrollWidth": 768,
+      "hasOverflow": false
+    }
+  },
+  {
+    "viewport": "mobile",
+    "dimensions": "375x812",
+    "screenshot": "verified-light-mobile-375.png",
+    "overflow_info": {
+      "docWidth": 375,
+      "scrollWidth": 375,
+      "bodyScrollWidth": 375,
+      "hasOverflow": false
+    }
+  }
+]

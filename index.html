@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+  <title>Linear Studio — GitHub Projects Workspace (Light Mode)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            canvas: "#f6f8fa",
+            surface: "#ffffff",
+            "surface-subtle": "#f3f4f6",
+            "surface-hover": "#f8fafc",
+            "border-subtle": "#d0d7de",
+            "border-muted": "#e2e8f0",
+            "border-focus": "#0969da",
+            "text-primary": "#1f2328",
+            "text-secondary": "#57606a",
+            "text-muted": "#8c959f",
+            brand: "#0969da",
+            "brand-hover": "#0854ad",
+            "brand-subtle": "#ddf4ff",
+            urgent: "#cf222e",
+            "urgent-bg": "#ffebe9",
+            "urgent-border": "#ff8182",
+            high: "#9a6700",
+            "high-bg": "#fff8c5",
+            "high-border": "#d4a72c",
+            medium: "#0969da",
+            "medium-bg": "#ddf4ff",
+            "medium-border": "#54aeff",
+            low: "#57606a",
+            "low-bg": "#f6f8fa",
+            done: "#1a7f37",
+            "done-bg": "#dafbe1",
+            "done-border": "#4ac26b",
+            pr: "#8250df",
+            "pr-bg": "#fbefff"
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
+          },
+          boxShadow: {
+            card: "0 1px 3px 0 rgba(31, 35, 40, 0.08), 0 1px 2px 0 rgba(31, 35, 40, 0.04)",
+            "card-hover": "0 4px 12px 0 rgba(31, 35, 40, 0.12), 0 1px 3px 0 rgba(31, 35, 40, 0.08)",
+            flyout: "0 8px 24px rgba(140, 149, 159, 0.2)"
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Custom light scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f6f8fa;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #d0d7de;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8c959f;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .drag-over-col {
+      background-color: #f0f7ff !important;
+      border-color: #0969da !important;
+    }
+    .dragging {
+      opacity: 0.45;
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="bg-canvas text-text-primary font-sans antialiased overflow-x-hidden h-screen flex flex-col md:flex-row select-none">
+
+  <!-- MOBILE SIDEBAR BACKDROP -->
+  <div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden md:hidden transition-opacity"></div>
+
+  <!-- SIDEBAR (Collapsible / Responsive Drawer on Mobile) -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border-subtle flex flex-col justify-between p-3.5 transform -translate-x-full md:translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0 shadow-lg md:shadow-none">
+    <div class="flex flex-col gap-3.5">
+      <!-- Workspace & Repository Header -->
+      <div class="flex items-center justify-between px-2.5 py-2 rounded-lg bg-surface-subtle border border-border-subtle hover:border-brand/40 transition-colors cursor-pointer group">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-7 h-7 rounded-md bg-brand text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
+            H
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span class="font-bold text-xs text-text-primary truncate">tincho/hyper-flow</span>
+            <span class="font-mono text-[10px] text-text-secondary flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> GitHub Synced
+            </span>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-[16px] text-text-muted group-hover:text-text-primary">unfold_more</span>
+      </div>
+
+      <!-- Quick Action: Create Issue -->
+      <button id="btn-quick-new" class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-sm active:scale-[0.98] transition-all">
+        <span class="material-symbols-outlined text-[16px]">add</span>
+        <span>Nuevo Issue</span>
+        <kbd class="ml-auto font-mono text-[10px] bg-white/20 px-1 rounded text-white font-medium">C</kbd>
+      </button>
+
+      <!-- Navigation Links -->
+      <nav class="flex flex-col gap-1 text-xs font-medium">
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand-subtle text-brand font-semibold border-l-2 border-brand">
+          <span class="material-symbols-outlined text-[18px]">view_kanban</span>
+          <span class="flex-1">Tablero Kanban</span>
+          <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-text-secondary">42</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors">
+          <span class="material-symbols-outlined text-[18px]">format_list_bulleted</span>
+          <span class="flex-1">Lista de Issues</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors">
+          <span class="material-symbols-outlined text-[18px]">flag</span>
+          <span class="flex-1">Hitos (Milestones)</span>
+          <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-brand">v2.4</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors">
+          <span class="material-symbols-outlined text-[18px]">call_split</span>
+          <span class="flex-1">Pull Requests</span>
+          <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-done font-bold">3</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors">
+          <span class="material-symbols-outlined text-[18px]">settings</span>
+          <span class="flex-1">Configuración</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="flex flex-col gap-2 pt-3 border-t border-border-subtle text-xs">
+      <div class="flex items-center justify-between px-2 py-1 text-text-secondary">
+        <span class="flex items-center gap-1.5 font-mono text-[11px]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> API: 4,820 / 5,000
+        </span>
+        <kbd class="font-mono text-[10px] bg-surface-subtle px-1 py-0.5 rounded border border-border-subtle text-text-muted">⌘K</kbd>
+      </div>
+      <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-surface-subtle border border-border-subtle">
+        <div class="w-7 h-7 rounded-full bg-brand/10 border border-brand/30 text-brand flex items-center justify-center font-bold text-xs">
+          TC
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <span class="text-xs font-bold text-text-primary truncate">TinChoX</span>
+          <span class="text-[10px] text-text-secondary truncate">Owner & Maintainer</span>
+        </div>
+        <button class="text-text-muted hover:text-text-primary" title="Cerrar sesión">
+          <span class="material-symbols-outlined text-[18px]">logout</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEWPORT WRAPPER -->
+  <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-canvas">
+
+    <!-- TOPBAR NAVIGATION -->
+    <header class="h-14 px-3 md:px-5 bg-surface border-b border-border-subtle flex items-center justify-between shrink-0 z-30 shadow-sm">
+      <!-- Left: Mobile Menu Toggle & Repo Title -->
+      <div class="flex items-center gap-2.5 min-w-0 flex-1">
+        <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle" aria-label="Abrir menú">
+          <span class="material-symbols-outlined text-[22px]">menu</span>
+        </button>
+
+        <!-- Project Badge for Mobile & Desktop -->
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="font-bold text-xs md:text-sm text-text-primary truncate">tincho / hyper-flow</span>
+          <span class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle border border-border-subtle text-text-secondary">
+            main
+          </span>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative w-full max-w-xs hidden sm:flex items-center ml-3">
+          <span class="material-symbols-outlined absolute left-2.5 text-[16px] text-text-muted pointer-events-none">search</span>
+          <input id="search-input" type="text" placeholder="Buscar issues (Ctrl+K)..." class="w-full bg-canvas text-text-primary placeholder:text-text-muted text-xs pl-8 pr-12 py-1.5 rounded-lg border border-border-subtle focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all"/>
+          <kbd class="absolute right-2 font-mono text-[9px] bg-surface px-1 py-0.5 rounded border border-border-subtle text-text-muted">⌘K</kbd>
+        </div>
+      </div>
+
+      <!-- Right Action Cluster -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Live Sync Button -->
+        <button id="btn-sync" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle border border-border-subtle text-xs transition-all" title="Sincronizar con GitHub">
+          <span class="material-symbols-outlined text-[16px]" id="sync-icon">sync</span>
+          <span class="hidden lg:inline font-mono text-[11px]">Sincronizar</span>
+        </button>
+
+        <!-- New Issue Primary Button -->
+        <button id="btn-header-new" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-sm active:scale-[0.98] transition-all">
+          <span class="material-symbols-outlined text-[16px]">add</span>
+          <span>+ Issue</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MOBILE-ONLY COLUMN SWITCHER TABS (< 768px) -->
+    <div class="md:hidden bg-surface border-b border-border-subtle px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 shadow-sm">
+      <button class="mobile-col-tab px-3 py-1.5 rounded-md text-xs font-bold shrink-0 transition-colors bg-brand text-white shadow-sm" data-col="backlog">
+        Backlog <span class="ml-1 opacity-80 font-mono text-[10px]">2</span>
+      </button>
+      <button class="mobile-col-tab px-3 py-1.5 rounded-md text-xs font-medium shrink-0 transition-colors bg-surface-subtle text-text-secondary hover:text-text-primary border border-border-subtle" data-col="todo">
+        Por Hacer <span class="ml-1 opacity-80 font-mono text-[10px]">2</span>
+      </button>
+      <button class="mobile-col-tab px-3 py-1.5 rounded-md text-xs font-medium shrink-0 transition-colors bg-surface-subtle text-text-secondary hover:text-text-primary border border-border-subtle" data-col="in_progress">
+        En Progreso <span class="ml-1 opacity-80 font-mono text-[10px]">2</span>
+      </button>
+      <button class="mobile-col-tab px-3 py-1.5 rounded-md text-xs font-medium shrink-0 transition-colors bg-surface-subtle text-text-secondary hover:text-text-primary border border-border-subtle" data-col="in_review">
+        En Revisión <span class="ml-1 opacity-80 font-mono text-[10px]">1</span>
+      </button>
+      <button class="mobile-col-tab px-3 py-1.5 rounded-md text-xs font-medium shrink-0 transition-colors bg-surface-subtle text-text-secondary hover:text-text-primary border border-border-subtle" data-col="done">
+        Completado <span class="ml-1 opacity-80 font-mono text-[10px]">1</span>
+      </button>
+    </div>
+
+    <!-- FILTER & STATUS BAR (Desktop/Tablet) -->
+    <div class="h-10 px-3 md:px-5 bg-surface/70 border-b border-border-subtle flex items-center justify-between shrink-0 text-xs overflow-x-auto no-scrollbar gap-3">
+      <!-- Filter Chips -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="text-text-muted flex items-center gap-1 text-[11px] font-semibold mr-1">
+          <span class="material-symbols-outlined text-[14px]">filter_alt</span> Filtros:
+        </span>
+        <button class="filter-chip px-2.5 py-0.5 rounded-md border border-border-subtle text-white bg-brand text-[11px] font-semibold transition-colors active" data-filter="all">
+          Todos
+        </button>
+        <button class="filter-chip px-2.5 py-0.5 rounded-md border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors text-[11px]" data-filter="urgent">
+          🔥 Urgentes
+        </button>
+        <button class="filter-chip px-2.5 py-0.5 rounded-md border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors text-[11px]" data-filter="bug">
+          🐞 Bugs
+        </button>
+        <button class="filter-chip px-2.5 py-0.5 rounded-md border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors text-[11px]" data-filter="frontend">
+          💻 Frontend
+        </button>
+      </div>
+
+      <!-- Telemetry Info -->
+      <div class="hidden sm:flex items-center gap-3 text-text-secondary font-mono text-[11px] shrink-0">
+        <span class="flex items-center gap-1 text-done font-semibold">
+          <span class="w-1.5 h-1.5 rounded-full bg-done"></span> 42 abiertos
+        </span>
+        <span class="text-border-subtle">|</span>
+        <span class="flex items-center gap-1 text-pr font-semibold">
+          <span class="material-symbols-outlined text-[13px]">call_split</span> 3 PRs
+        </span>
+        <span class="text-border-subtle">|</span>
+        <span class="flex items-center gap-1 text-brand font-semibold">
+          <span class="material-symbols-outlined text-[13px]">schedule</span> Sprint 14 (3 días)
+        </span>
+      </div>
+    </div>
+
+    <!-- MAIN WORKSPACE: KANBAN BOARD + DRAWER -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+      <!-- KANBAN BOARD AREA -->
+      <!-- On mobile: each column can be selected via the tabs above, or all display cleanly -->
+      <main id="board-container" class="flex-1 overflow-x-auto overflow-y-hidden p-3 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas">
+
+        <!-- COLUMN 1: BACKLOG -->
+        <section class="kanban-col w-full md:w-72 shrink-0 flex flex-col max-h-full rounded-xl bg-surface border border-border-subtle shadow-card" data-col="backlog">
+          <div class="p-3 flex items-center justify-between border-b border-border-subtle bg-surface-subtle/50 rounded-t-xl">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[16px] text-text-muted">radio_button_unchecked</span>
+              <span class="font-bold text-xs text-text-primary">Backlog</span>
+              <span class="col-count font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-border-subtle text-text-secondary font-semibold">2</span>
+            </div>
+            <button class="btn-add-to-col p-1 rounded hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+            </button>
+          </div>
+          <div class="col-cards flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+            <!-- Card #189 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="189" data-priority="medium" data-tags="telemetry,metrics">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#189</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-medium-bg text-medium border border-medium-border font-semibold">Media</span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">Add telemetry latency histogram widget to dashboard</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle text-text-secondary border border-border-subtle">telemetry</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono">✓ 1/4 tareas</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-text-secondary">
+                    <span class="material-symbols-outlined text-[14px]">chat_bubble</span> 2
+                  </span>
+                  <div class="w-5 h-5 rounded-full bg-brand-subtle text-brand border border-brand/20 flex items-center justify-center text-[9px] font-bold">JD</div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Card #194 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="194" data-priority="low" data-tags="compiler,ast">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#194</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-low-bg text-low border border-border-subtle font-semibold">Baja</span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">Refactor AST parser for JSX fragments & memo hooks</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle text-text-secondary border border-border-subtle">compiler</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono">✓ 0/3 tareas</span>
+                <div class="flex items-center gap-2">
+                  <div class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center text-[9px] font-bold">AL</div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- COLUMN 2: TODO -->
+        <section class="kanban-col w-full md:w-72 shrink-0 flex flex-col max-h-full rounded-xl bg-surface border border-border-subtle shadow-card hidden md:flex" data-col="todo">
+          <div class="p-3 flex items-center justify-between border-b border-border-subtle bg-surface-subtle/50 rounded-t-xl">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[16px] text-brand">schedule</span>
+              <span class="font-bold text-xs text-text-primary">Por Hacer</span>
+              <span class="col-count font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-border-subtle text-text-secondary font-semibold">2</span>
+            </div>
+            <button class="btn-add-to-col p-1 rounded hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+            </button>
+          </div>
+          <div class="col-cards flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+            <!-- Card #142 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="142" data-priority="high" data-tags="api,security">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#142</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-high-bg text-high border border-high-border font-semibold">Alta</span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">Implement edge function rate limiting via Redis token bucket</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle text-text-secondary border border-border-subtle">api</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-high-bg text-high border border-high-border">security</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono">✓ 3/5 tareas</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-text-secondary">
+                    <span class="material-symbols-outlined text-[14px]">chat_bubble</span> 8
+                  </span>
+                  <div class="w-5 h-5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center text-[9px] font-bold">EK</div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Card #177 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="177" data-priority="urgent" data-tags="bug,auth">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#177</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-urgent-bg text-urgent border border-urgent-border font-bold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-urgent animate-pulse"></span> Urgente
+                </span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">OAuth2 token refresh race condition on mobile reconnect</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-urgent-bg text-urgent border border-urgent-border">bug</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-brand-subtle text-brand border border-brand/20">auth</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono">✓ 2/2 tareas</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-text-secondary">
+                    <span class="material-symbols-outlined text-[14px]">chat_bubble</span> 14
+                  </span>
+                  <div class="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center text-[9px] font-bold">MT</div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- COLUMN 3: IN PROGRESS -->
+        <section class="kanban-col w-full md:w-72 shrink-0 flex flex-col max-h-full rounded-xl bg-surface border border-border-subtle shadow-card hidden md:flex" data-col="in_progress">
+          <div class="p-3 flex items-center justify-between border-b border-border-subtle bg-surface-subtle/50 rounded-t-xl">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[16px] text-brand">trending_up</span>
+              <span class="font-bold text-xs text-text-primary">En Progreso</span>
+              <span class="col-count font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-border-subtle text-text-secondary font-semibold">2</span>
+            </div>
+            <button class="btn-add-to-col p-1 rounded hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+            </button>
+          </div>
+          <div class="col-cards flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+            <!-- Card #104 (Selected/Active) -->
+            <article class="issue-card p-3 rounded-lg bg-surface border-2 border-brand shadow-card-hover cursor-pointer" draggable="true" data-id="104" data-priority="urgent" data-tags="performance,frontend">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#104</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-urgent-bg text-urgent border border-urgent-border font-bold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-urgent"></span> Urgente
+                </span>
+              </div>
+              <h4 class="font-bold text-xs text-text-primary mb-2 leading-relaxed">Optimize WebGL canvas render loop for 60fps</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-done-bg text-done border border-done-border font-semibold">performance</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-brand-subtle text-brand border border-brand/20 font-semibold">frontend</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono text-done font-semibold">✓ 2/4 tareas</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-text-primary font-semibold">
+                    <span class="material-symbols-outlined text-[14px] text-brand">chat_bubble</span> 6
+                  </span>
+                  <div class="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center text-[9px] font-bold">MT</div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Card #118 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="118" data-priority="high" data-tags="backend,rust">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#118</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-high-bg text-high border border-high-border font-semibold">Alta</span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">Migrate schema migrations pipeline to native binary</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle text-text-secondary border border-border-subtle">backend</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono">✓ 1/6 tareas</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-text-secondary">
+                    <span class="material-symbols-outlined text-[14px]">chat_bubble</span> 4
+                  </span>
+                  <div class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center text-[9px] font-bold">SL</div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- COLUMN 4: IN REVIEW -->
+        <section class="kanban-col w-full md:w-72 shrink-0 flex flex-col max-h-full rounded-xl bg-surface border border-border-subtle shadow-card hidden md:flex" data-col="in_review">
+          <div class="p-3 flex items-center justify-between border-b border-border-subtle bg-surface-subtle/50 rounded-t-xl">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[16px] text-pr">visibility</span>
+              <span class="font-bold text-xs text-text-primary">En Revisión</span>
+              <span class="col-count font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-border-subtle text-text-secondary font-semibold">1</span>
+            </div>
+            <button class="btn-add-to-col p-1 rounded hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+            </button>
+          </div>
+          <div class="col-cards flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+            <!-- Card #102 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="102" data-priority="high" data-tags="security,tests">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-brand font-bold">#102</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-pr-bg text-pr border border-pr/30 font-semibold flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[12px]">call_split</span> PR #108
+                </span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">Multi-tenant isolation barrier verification test suite</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle text-text-secondary border border-border-subtle">security</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+                <span class="font-mono text-done font-semibold">✓ 4/4 tareas</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-0.5 text-text-secondary">
+                    <span class="material-symbols-outlined text-[14px]">chat_bubble</span> 9
+                  </span>
+                  <div class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center text-[9px] font-bold">RS</div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- COLUMN 5: DONE -->
+        <section class="kanban-col w-full md:w-72 shrink-0 flex flex-col max-h-full rounded-xl bg-surface border border-border-subtle shadow-card hidden md:flex" data-col="done">
+          <div class="p-3 flex items-center justify-between border-b border-border-subtle bg-surface-subtle/50 rounded-t-xl">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[16px] text-done">check_circle</span>
+              <span class="font-bold text-xs text-text-primary">Completado</span>
+              <span class="col-count font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-border-subtle text-text-secondary font-semibold">1</span>
+            </div>
+            <button class="btn-add-to-col p-1 rounded hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+            </button>
+          </div>
+          <div class="col-cards flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5 opacity-90">
+            <!-- Card #97 -->
+            <article class="issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card" draggable="true" data-id="97" data-priority="low" data-tags="performance">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] text-text-muted line-through">#97</span>
+                <span class="material-symbols-outlined text-[16px] text-done">done</span>
+              </div>
+              <h4 class="font-semibold text-xs text-text-secondary line-through mb-2 leading-relaxed">Implement zstandard decompression in worker threads</h4>
+              <div class="flex items-center gap-1.5 mb-2.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-done-bg text-done border border-done-border">performance</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-muted text-[11px]">
+                <span class="font-mono text-done">✓ 3/3 tareas</span>
+                <div class="w-5 h-5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center justify-center text-[9px] font-bold">MT</div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ISSUE DETAIL DRAWER (Responsive Slide-Over Inspector) -->
+      <aside id="issue-drawer" class="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-surface border-l border-border-subtle flex flex-col shadow-flyout transform translate-x-full md:translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0">
+        
+        <!-- Drawer Header -->
+        <div class="h-14 px-4 bg-surface-subtle border-b border-border-subtle flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="font-mono text-xs text-text-secondary truncate">tincho/hyper-flow</span>
+            <span class="text-text-muted">/</span>
+            <span class="font-mono text-xs text-brand font-bold" id="drawer-issue-id">#104</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full bg-done-bg border border-done-border text-done font-mono text-[10px] font-bold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-done"></span> Abierto
+            </span>
+            <a href="https://github.com" target="_blank" class="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-surface transition-colors" title="Ver en GitHub">
+              <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+            </a>
+            <button id="close-drawer-btn" class="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors" title="Cerrar panel">
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Drawer Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs">
+          <!-- Issue Title -->
+          <h2 id="drawer-issue-title" class="text-base font-bold text-text-primary leading-snug">
+            Optimize WebGL canvas render loop for 60fps
+          </h2>
+
+          <!-- Property Grid -->
+          <div class="p-3 rounded-lg bg-surface-subtle border border-border-subtle flex flex-col gap-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-text-secondary flex items-center gap-1.5 font-medium">
+                <span class="material-symbols-outlined text-[15px]">person</span> Asignado
+              </span>
+              <div class="flex items-center gap-1.5 font-bold text-text-primary">
+                <div class="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center text-[9px] font-bold">MT</div>
+                <span>Martin Tincho (Lead Graphics)</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-text-secondary flex items-center gap-1.5 font-medium">
+                <span class="material-symbols-outlined text-[15px] text-urgent">flag</span> Prioridad
+              </span>
+              <span class="px-2 py-0.5 rounded bg-urgent-bg border border-urgent-border text-urgent font-mono text-[10px] font-bold">
+                🔥 Urgente
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-text-secondary flex items-center gap-1.5 font-medium">
+                <span class="material-symbols-outlined text-[15px]">label</span> Etiquetas
+              </span>
+              <div class="flex items-center gap-1">
+                <span class="px-1.5 py-0.5 rounded bg-done-bg text-done font-mono text-[10px] border border-done-border font-semibold">performance</span>
+                <span class="px-1.5 py-0.5 rounded bg-brand-subtle text-brand font-mono text-[10px] border border-brand/20 font-semibold">frontend</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-text-secondary flex items-center gap-1.5 font-medium">
+                <span class="material-symbols-outlined text-[15px]">alt_route</span> Branch
+              </span>
+              <code class="font-mono text-[11px] text-brand bg-surface px-1.5 py-0.5 rounded border border-border-subtle font-semibold">perf/webgl-loop-opt</code>
+            </div>
+          </div>
+
+          <!-- Description Markdown Block -->
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Descripción</span>
+            <div class="p-3 rounded-lg bg-surface border border-border-subtle text-text-primary leading-relaxed space-y-2 shadow-sm">
+              <p>Detectada caída de frames severa en escenas con más de 10,000 partículas debido a recreación innecesaria de buffers en cada ciclo de render:</p>
+              <pre class="p-2.5 rounded bg-surface-subtle border border-border-subtle font-mono text-[11px] text-brand overflow-x-auto">// Antipatrón detectado:
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);</pre>
+              <p class="text-text-secondary">Es necesario implementar memory pooling de buffers estáticos para evitar sobrecarga del garbage collector.</p>
+            </div>
+          </div>
+
+          <!-- Interactive Checklist Tasks -->
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Subtareas (Checklist)</span>
+              <span class="font-mono text-[11px] text-brand font-bold">2 de 4 completadas</span>
+            </div>
+            <div class="space-y-1.5">
+              <label class="flex items-center gap-2.5 p-2 rounded-lg bg-surface border border-border-subtle hover:bg-surface-subtle cursor-pointer shadow-sm">
+                <input type="checkbox" checked class="rounded border-border-subtle text-brand focus:ring-brand"/>
+                <span class="line-through text-text-muted">Perfilar eventos de frame dropped en DevTools</span>
+              </label>
+              <label class="flex items-center gap-2.5 p-2 rounded-lg bg-surface border border-border-subtle hover:bg-surface-subtle cursor-pointer shadow-sm">
+                <input type="checkbox" checked class="rounded border-border-subtle text-brand focus:ring-brand"/>
+                <span class="line-through text-text-muted">Pool de buffers de partículas para eliminar GC spikes</span>
+              </label>
+              <label class="flex items-center gap-2.5 p-2 rounded-lg bg-surface border border-border-subtle hover:bg-surface-subtle cursor-pointer shadow-sm">
+                <input type="checkbox" class="rounded border-border-subtle text-brand focus:ring-brand"/>
+                <span class="text-text-primary font-medium">Debounce en triggers del ResizeObserver</span>
+              </label>
+              <label class="flex items-center gap-2.5 p-2 rounded-lg bg-surface border border-border-subtle hover:bg-surface-subtle cursor-pointer shadow-sm">
+                <input type="checkbox" class="rounded border-border-subtle text-brand focus:ring-brand"/>
+                <span class="text-text-primary font-medium">Fallback de telemetría FPS para móviles de baja potencia</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Activity & Comments -->
+          <div class="flex flex-col gap-2 pt-2 border-t border-border-subtle">
+            <span class="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Discusión y Actividad</span>
+            <div class="p-3 rounded-lg bg-surface-subtle border border-border-subtle space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-text-primary flex items-center gap-1.5">
+                  <div class="w-5 h-5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center text-[8px] font-bold">EK</div>
+                  Elena Kim
+                </span>
+                <span class="text-[10px] text-text-muted font-mono">hace 2h</span>
+              </div>
+              <p class="text-text-secondary text-xs">Probé el nuevo shader uniform branch y el frametime bajó de 28ms a 14.2ms en Chromium. ¡Excelente avance! 🚀</p>
+            </div>
+            <!-- Comment Input -->
+            <div class="flex flex-col gap-1.5">
+              <textarea placeholder="Escribe un comentario o usa @ para mencionar..." class="w-full h-16 bg-surface border border-border-subtle rounded-lg p-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand resize-none"></textarea>
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-[10px] text-text-muted">Markdown compatible</span>
+                <button class="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-sm">Comentar</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- FLOATING ACTION BUTTON (Mobile Only "+ Issue") -->
+  <button id="btn-fab-new" class="md:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-brand text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform" aria-label="Crear Issue">
+    <span class="material-symbols-outlined text-[24px]">add</span>
+  </button>
+
+  <!-- CREATE ISSUE MODAL -->
+  <div id="modal-new-issue" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-lg bg-surface border border-border-subtle rounded-xl shadow-flyout overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="h-12 px-4 bg-surface-subtle border-b border-border-subtle flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-brand text-[20px]">add_circle</span>
+          <span class="font-bold text-xs text-text-primary">Crear Nuevo Issue</span>
+        </div>
+        <button id="modal-close-btn" class="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+      <form id="form-new-issue" class="p-4 flex flex-col gap-3.5 text-xs">
+        <div>
+          <label class="block text-[11px] font-bold text-text-secondary mb-1">Título del Issue *</label>
+          <input type="text" id="input-issue-title" required placeholder="Ej: Corregir memory leak en conexión websocket" class="w-full bg-canvas border border-border-subtle rounded-lg px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-brand focus:ring-1 focus:ring-brand outline-none"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-text-secondary mb-1">Prioridad</label>
+            <select id="select-issue-priority" class="w-full bg-canvas border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:border-brand outline-none">
+              <option value="urgent">🔥 Urgente</option>
+              <option value="high">⚠️ Alta</option>
+              <option value="medium" selected>🔹 Media</option>
+              <option value="low">▫️ Baja</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-text-secondary mb-1">Columna Inicial</label>
+            <select id="select-issue-col" class="w-full bg-canvas border border-border-subtle rounded-lg px-3 py-2 text-text-primary focus:border-brand outline-none">
+              <option value="backlog">Backlog</option>
+              <option value="todo" selected>Por Hacer</option>
+              <option value="in_progress">En Progreso</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-text-secondary mb-1">Descripción (Markdown)</label>
+          <textarea id="input-issue-desc" rows="3" placeholder="Describe los pasos para reproducir o los requerimientos técnicos..." class="w-full bg-canvas border border-border-subtle rounded-lg p-3 text-text-primary placeholder:text-text-muted focus:border-brand focus:ring-1 focus:ring-brand outline-none resize-none"></textarea>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+          <button type="button" id="modal-cancel-btn" class="px-3 py-1.5 rounded-lg border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-surface-subtle font-medium">
+            Cancelar (Esc)
+          </button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold shadow-sm">
+            Guardar Issue
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- INTERACTION SCRIPT -->
+  <script>
+    // Mobile Drawer Toggle
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileBackdrop = document.getElementById('mobile-backdrop');
+    const sidebar = document.getElementById('sidebar');
+
+    function toggleMobileMenu(open) {
+      if (open) {
+        sidebar.classList.remove('-translate-x-full');
+        mobileBackdrop.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        mobileBackdrop.classList.add('hidden');
+      }
+    }
+
+    mobileMenuBtn?.addEventListener('click', () => toggleMobileMenu(true));
+    mobileBackdrop?.addEventListener('click', () => {
+      toggleMobileMenu(false);
+      toggleIssueDrawer(false);
+    });
+
+    // Mobile Column Switcher
+    const mobileTabs = document.querySelectorAll('.mobile-col-tab');
+    const kanbanCols = document.querySelectorAll('.kanban-col');
+
+    mobileTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        mobileTabs.forEach(t => {
+          t.classList.remove('bg-brand', 'text-white', 'shadow-sm');
+          t.classList.add('bg-surface-subtle', 'text-text-secondary', 'border', 'border-border-subtle');
+        });
+        tab.classList.add('bg-brand', 'text-white', 'shadow-sm');
+        tab.classList.remove('bg-surface-subtle', 'text-text-secondary', 'border', 'border-border-subtle');
+
+        const targetCol = tab.getAttribute('data-col');
+        if (window.innerWidth < 768) {
+          kanbanCols.forEach(col => {
+            if (col.getAttribute('data-col') === targetCol) {
+              col.classList.remove('hidden');
+              col.classList.add('flex');
+            } else {
+              col.classList.add('hidden');
+              col.classList.remove('flex');
+            }
+          });
+        }
+      });
+    });
+
+    // Handle Resize (restore columns on desktop)
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 768) {
+        kanbanCols.forEach(col => {
+          col.classList.remove('hidden');
+          col.classList.add('flex');
+        });
+      } else {
+        // activate the currently selected mobile tab
+        const activeTab = document.querySelector('.mobile-col-tab.bg-brand');
+        const activeCol = activeTab ? activeTab.getAttribute('data-col') : 'backlog';
+        kanbanCols.forEach(col => {
+          if (col.getAttribute('data-col') === activeCol) {
+            col.classList.remove('hidden');
+            col.classList.add('flex');
+          } else {
+            col.classList.add('hidden');
+            col.classList.remove('flex');
+          }
+        });
+      }
+    });
+
+    // Issue Detail Drawer Toggle
+    const issueDrawer = document.getElementById('issue-drawer');
+    const closeDrawerBtn = document.getElementById('close-drawer-btn');
+
+    function toggleIssueDrawer(open) {
+      if (open) {
+        issueDrawer.classList.remove('translate-x-full');
+        if (window.innerWidth < 768) mobileBackdrop.classList.remove('hidden');
+      } else {
+        issueDrawer.classList.add('translate-x-full');
+        if (window.innerWidth < 768) mobileBackdrop.classList.add('hidden');
+      }
+    }
+
+    closeDrawerBtn?.addEventListener('click', () => toggleIssueDrawer(false));
+
+    // Card Click -> Opens Drawer with Card Data
+    document.querySelectorAll('.issue-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-id');
+        const title = card.querySelector('h4')?.textContent || '';
+        document.getElementById('drawer-issue-id').textContent = `#${id}`;
+        document.getElementById('drawer-issue-title').textContent = title;
+        toggleIssueDrawer(true);
+      });
+    });
+
+    // Create Issue Modal Toggle
+    const modalNewIssue = document.getElementById('modal-new-issue');
+    const btnQuickNew = document.getElementById('btn-quick-new');
+    const btnHeaderNew = document.getElementById('btn-header-new');
+    const btnFabNew = document.getElementById('btn-fab-new');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+    function openModal() { modalNewIssue.classList.remove('hidden'); document.getElementById('input-issue-title').focus(); }
+    function closeModal() { modalNewIssue.classList.add('hidden'); }
+
+    btnQuickNew?.addEventListener('click', openModal);
+    btnHeaderNew?.addEventListener('click', openModal);
+    btnFabNew?.addEventListener('click', openModal);
+    modalCloseBtn?.addEventListener('click', closeModal);
+    modalCancelBtn?.addEventListener('click', closeModal);
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'c' || e.key === 'C') {
+        if (!['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+          e.preventDefault();
+          openModal();
+        }
+      }
+      if (e.key === 'Escape') {
+        closeModal();
+        toggleIssueDrawer(false);
+        toggleMobileMenu(false);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('search-input')?.focus();
+      }
+    });
+
+    // Live Filter Search
+    const searchInput = document.getElementById('search-input');
+    searchInput?.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      document.querySelectorAll('.issue-card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+
+    // Filter Chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(c => {
+          c.classList.remove('bg-brand', 'text-white');
+          c.classList.add('text-text-secondary', 'hover:bg-surface-subtle');
+        });
+        chip.classList.add('bg-brand', 'text-white');
+        chip.classList.remove('text-text-secondary', 'hover:bg-surface-subtle');
+
+        const filter = chip.getAttribute('data-filter');
+        document.querySelectorAll('.issue-card').forEach(card => {
+          if (filter === 'all') {
+            card.style.display = '';
+          } else if (filter === 'urgent') {
+            card.style.display = card.getAttribute('data-priority') === 'urgent' ? '' : 'none';
+          } else {
+            const tags = card.getAttribute('data-tags') || '';
+            card.style.display = tags.includes(filter) ? '' : 'none';
+          }
+        });
+      });
+    });
+
+    // HTML5 Drag & Drop for Kanban Cards
+    let draggedCard = null;
+
+    document.querySelectorAll('.issue-card').forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        draggedCard = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => {
+        draggedCard = null;
+        card.classList.remove('dragging');
+        document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('drag-over-col'));
+        updateCounters();
+      });
+    });
+
+    document.querySelectorAll('.kanban-col').forEach(col => {
+      col.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        col.classList.add('drag-over-col');
+      });
+      col.addEventListener('dragleave', () => {
+        col.classList.remove('drag-over-col');
+      });
+      col.addEventListener('drop', (e) => {
+        e.preventDefault();
+        col.classList.remove('drag-over-col');
+        if (draggedCard) {
+          const cardsContainer = col.querySelector('.col-cards');
+          cardsContainer.appendChild(draggedCard);
+          updateCounters();
+        }
+      });
+    });
+
+    function updateCounters() {
+      document.querySelectorAll('.kanban-col').forEach(col => {
+        const count = col.querySelectorAll('.issue-card').length;
+        const countBadge = col.querySelector('.col-count');
+        if (countBadge) countBadge.textContent = count;
+      });
+    }
+
+    // New Issue Form Submit
+    document.getElementById('form-new-issue')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('input-issue-title').value;
+      const priority = document.getElementById('select-issue-priority').value;
+      const colId = document.getElementById('select-issue-col').value;
+      const nextId = Math.floor(Math.random() * 800) + 200;
+
+      const priorityBadge = priority === 'urgent' 
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-urgent-bg text-urgent border border-urgent-border font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-urgent animate-pulse"></span> Urgente</span>`
+        : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-medium-bg text-medium border border-medium-border font-semibold">Media</span>`;
+
+      const newCard = document.createElement('article');
+      newCard.className = 'issue-card p-3 rounded-lg bg-surface border border-border-subtle hover:border-brand hover:shadow-card-hover transition-all cursor-pointer shadow-card';
+      newCard.draggable = true;
+      newCard.setAttribute('data-id', nextId);
+      newCard.setAttribute('data-priority', priority);
+      newCard.setAttribute('data-tags', 'feature');
+      newCard.innerHTML = `
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="font-mono text-[11px] text-brand font-bold">#${nextId}</span>
+          ${priorityBadge}
+        </div>
+        <h4 class="font-semibold text-xs text-text-primary mb-2 leading-relaxed">${title}</h4>
+        <div class="flex items-center gap-1.5 mb-2.5">
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-brand-subtle text-brand border border-brand/20 font-semibold">feature</span>
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-border-muted text-text-secondary text-[11px]">
+          <span class="font-mono">✓ 0/1 tareas</span>
+          <div class="flex items-center gap-2">
+            <div class="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center text-[9px] font-bold">TC</div>
+          </div>
+        </div>
+      `;
+
+      newCard.addEventListener('click', () => {
+        document.getElementById('drawer-issue-id').textContent = `#${nextId}`;
+        document.getElementById('drawer-issue-title').textContent = title;
+        toggleIssueDrawer(true);
+      });
+      newCard.addEventListener('dragstart', (e) => {
+        draggedCard = newCard;
+        newCard.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      newCard.addEventListener('dragend', () => {
+        draggedCard = null;
+        newCard.classList.remove('dragging');
+        updateCounters();
+      });
+
+      const targetCol = document.querySelector(`.kanban-col[data-col="${colId}"] .col-cards`);
+      if (targetCol) {
+        targetCol.prepend(newCard);
+        updateCounters();
+      }
+
+      closeModal();
+      document.getElementById('form-new-issue').reset();
+    });
+
+    // Sync button animation
+    document.getElementById('btn-sync')?.addEventListener('click', () => {
+      const icon = document.getElementById('sync-icon');
+      icon.classList.add('animate-spin');
+      setTimeout(() => {
+        icon.classList.remove('animate-spin');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
