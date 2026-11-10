@@ -1,0 +1,8 @@
+{
+  "landing_rendered_unauthenticated": true,
+  "panel_blocked_before_login": true,
+  "registration_flow_worked": true,
+  "dashboard_opened_after_auth": true,
+  "signout_returned_to_landing": true,
+  "signin_with_account_worked": true
+}

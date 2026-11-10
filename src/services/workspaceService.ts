@@ -28,8 +28,16 @@ export class WorkspaceService {
     return data.user;
   }
 
-  public async signUp(email: string, password: string): Promise<User> {
-    const { data, error } = await this.client.auth.signUp({ email, password });
+  public async signUp(email: string, password: string, name?: string): Promise<User> {
+    const { data, error } = await this.client.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name || email.split('@')[0]
+        }
+      }
+    });
     if (error) {
       throw new Error(friendlyAuthError(error.message));
     }

@@ -14,6 +14,7 @@ import {
   Users 
 } from 'lucide-react';
 import { useStore, ActiveView } from '../store/useStore';
+import { workspaceService } from '../services/workspaceService';
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -24,6 +25,7 @@ export const Sidebar: React.FC = () => {
     setIsAuthModalOpen,
     activeRepoFullName,
     currentUserEmail,
+    setCurrentUserEmail,
     activeView,
     setActiveView
   } = useStore();
@@ -141,13 +143,20 @@ export const Sidebar: React.FC = () => {
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-bold text-text-primary dark:text-dark-text truncate">
-                {currentUserEmail || 'Martin Tincho'}
+                {currentUserEmail || 'Usuario Conectado'}
               </span>
               <span className="text-[10px] text-text-secondary dark:text-dark-text-muted truncate">
-                {currentUserEmail ? 'Supabase Conectado' : 'Modo Local (Clic para Auth)'}
+                Supabase Cloud (boxtools)
               </span>
             </div>
-            <button className="text-text-muted group-hover:text-text-primary" title="Gestionar cuenta">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                workspaceService.signOut().then(() => setCurrentUserEmail(null));
+              }}
+              className="text-text-muted hover:text-urgent p-1 rounded transition-colors" 
+              title="Cerrar sesión e ir a la página principal"
+            >
               <LogOut className="w-4 h-4" />
             </button>
           </div>

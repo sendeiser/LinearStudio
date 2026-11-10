@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
@@ -15,6 +15,7 @@ import { TeamWorkspaceView } from './components/views/TeamWorkspaceView';
 import { PullRequestsView } from './components/views/PullRequestsView';
 import { MultiProjectTriageView } from './components/views/MultiProjectTriageView';
 import { SettingsView } from './components/views/SettingsView';
+import { LandingAuthPage } from './components/views/LandingAuthPage';
 import { useStore } from './store/useStore';
 import { ColumnId } from './types/issue';
 import { supabase } from './lib/supabase';
@@ -37,6 +38,8 @@ export const App: React.FC = () => {
     setCurrentUserEmail
   } = useStore();
 
+  const [authChecked, setAuthChecked] = useState(false);
+
   // Sync theme class on <html> on mount & theme change
   useEffect(() => {
     if (theme === 'dark') {
@@ -58,6 +61,9 @@ export const App: React.FC = () => {
           }
         });
       }
+      setAuthChecked(true);
+    }).catch(() => {
+      setAuthChecked(true);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -196,6 +202,23 @@ export const App: React.FC = () => {
     }
   };
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-canvas dark:bg-dark-canvas flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 border-3 border-brand border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-mono text-text-secondary">Conectando con Supabase Cloud (boxtools)...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Página principal de Registro e Inicio de Sesión: no permite entrar al panel hasta autenticarse
+  if (!currentUserEmail) {
+    return <LandingAuthPage />;
+  }
+
+  // Panel principal autenticado
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-canvas dark:bg-dark-canvas text-text-primary dark:text-dark-text antialiased">
       {/* Primary Sidebar */}
