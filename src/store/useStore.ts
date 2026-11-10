@@ -25,8 +25,8 @@ interface AppState {
   setSearchQuery: (q: string) => void;
   activeFilter: string;
   setActiveFilter: (filter: string) => void;
-  dataMode: 'local' | 'cloud';
-  setDataMode: (mode: 'local' | 'cloud') => void;
+  dataMode: 'cloud';
+  setDataMode: (mode: 'cloud') => void;
   currentUserEmail: string | null;
   setCurrentUserEmail: (email: string | null) => void;
   activeRepoFullName: string;
@@ -75,13 +75,8 @@ export const useStore = create<AppState>((set) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
   activeFilter: 'all',
   setActiveFilter: (filter) => set({ activeFilter: filter }),
-  dataMode: (typeof window !== 'undefined' && (localStorage.getItem('data_mode') as 'local' | 'cloud')) || 'local',
-  setDataMode: (mode) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('data_mode', mode);
-    }
-    set({ dataMode: mode });
-  },
+  dataMode: 'cloud' as const,
+  setDataMode: (_mode: 'cloud') => set({ dataMode: 'cloud' }),
   currentUserEmail: null,
   setCurrentUserEmail: (email) => set({ currentUserEmail: email }),
   activeRepoFullName: 'tincho/hyper-flow',

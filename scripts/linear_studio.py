@@ -145,12 +145,8 @@ def get_projects():
     repos = ensure_workspace_and_projects()
     if repos:
         return repos
-    # Fallback local
-    return [
-        {"id": "local-repo-1", "full_name": "tincho/hyper-flow", "default_branch": "main"},
-        {"id": "local-repo-2", "full_name": "boxtools", "default_branch": "main"},
-        {"id": "local-repo-3", "full_name": "tincho/linear-studio-github", "default_branch": "main"}
-    ]
+    print("Error: No se pudieron obtener los proyectos desde Supabase Cloud. Verifica la conexión con boxtools.", file=sys.stderr)
+    sys.exit(1)
 
 def cmd_list_projects(args):
     projects = get_projects()

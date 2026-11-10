@@ -3,7 +3,6 @@ import {
   Settings, 
   User, 
   Cloud, 
-  HardDrive, 
   GitBranch, 
   Sun, 
   Moon, 
@@ -32,8 +31,6 @@ export const SettingsView: React.FC = () => {
   const { 
     theme, 
     toggleTheme, 
-    dataMode, 
-    setDataMode, 
     currentUserEmail, 
     setCurrentUserEmail,
     activeRepoFullName,
@@ -145,12 +142,10 @@ export const SettingsView: React.FC = () => {
       if (isRegister) {
         const user = await workspaceService.signUp(email, password);
         setCurrentUserEmail(user.email || email);
-        setDataMode('cloud');
         setFeedback({ type: 'success', text: '¡Usuario registrado e iniciado en Supabase Cloud con éxito!' });
       } else {
         const user = await workspaceService.signIn(email, password);
         setCurrentUserEmail(user.email || email);
-        setDataMode('cloud');
         setFeedback({ type: 'success', text: 'Sesión iniciada correctamente en Supabase Cloud.' });
       }
       setEmail('');
@@ -169,8 +164,7 @@ export const SettingsView: React.FC = () => {
       // Safe fallback
     }
     setCurrentUserEmail(null);
-    setDataMode('local');
-    setFeedback({ type: 'success', text: 'Sesión cerrada. Has regresado al Modo Local / Offline.' });
+    setFeedback({ type: 'success', text: 'Sesión cerrada en Supabase Cloud.' });
   };
 
   const handleSaveRepo = (e: React.FormEvent) => {
@@ -346,33 +340,18 @@ export const SettingsView: React.FC = () => {
 
             <div className="flex flex-col gap-1.5 pt-1">
               <span className="text-[10px] font-bold text-text-secondary dark:text-dark-text-muted uppercase">
-                Conmutar Modo de Almacenamiento
+                Modo de Almacenamiento
               </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDataMode('local')}
-                  className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 font-bold text-xs transition-all ${
-                    dataMode === 'local'
-                      ? 'border-brand bg-brand text-white shadow-sm'
-                      : 'border-border-subtle bg-surface text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <HardDrive className="w-3.5 h-3.5" />
-                  <span>Modo Local</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDataMode('cloud')}
-                  className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 font-bold text-xs transition-all ${
-                    dataMode === 'cloud'
-                      ? 'border-brand bg-brand text-white shadow-sm'
-                      : 'border-border-subtle bg-surface text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <Cloud className="w-3.5 h-3.5" />
-                  <span>Supabase Cloud</span>
-                </button>
+              <div className="p-2.5 rounded-lg border border-brand/30 bg-brand/5 dark:bg-dark-brand/10 flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-brand dark:text-dark-brand shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs text-text-primary dark:text-dark-text">
+                    Supabase Cloud Exclusivo (boxtools)
+                  </span>
+                  <span className="text-[10px] text-text-secondary dark:text-dark-text-muted">
+                    Sincronización en vivo con base de datos compartida y seguridad RLS.
+                  </span>
+                </div>
               </div>
             </div>
           </div>

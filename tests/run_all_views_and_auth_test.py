@@ -76,19 +76,14 @@ with sync_playwright() as p:
     page.screenshot(path=shot_prs)
     shutil.copyfile(shot_prs, os.path.join(ARTIFACT_DIR, "view-prs.png"))
 
-    # 5. Test clicking "Antigravity Copilot"
-    page.locator("aside nav button:has-text('Antigravity Copilot')").click()
+    # 5. Test clicking "Proyectos & Triage Global"
+    page.locator("aside nav button:has-text('Proyectos & Triage Global')").click()
     page.wait_for_timeout(400)
-    has_copilot = page.locator("text='Antigravity Coding Copilot'").count() > 0
-    test_summary["views_tested"]["copilot"] = has_copilot
-    
-    # Prompt Copilot
-    page.fill("input[placeholder*='Pregúntale a Antigravity']", "Analizar los issues urgentes")
-    page.locator("button:has-text('Enviar')").click()
-    page.wait_for_timeout(1500)
-    shot_copilot = os.path.join(WORKSPACE_DIR, "tests", "reports", "view-copilot.png")
-    page.screenshot(path=shot_copilot)
-    shutil.copyfile(shot_copilot, os.path.join(ARTIFACT_DIR, "view-copilot.png"))
+    has_triage = page.locator("text=Triage Multi-Proyecto").count() > 0
+    test_summary["views_tested"]["projects_triage"] = has_triage
+    shot_triage = os.path.join(WORKSPACE_DIR, "tests", "reports", "view-projects-triage.png")
+    page.screenshot(path=shot_triage)
+    shutil.copyfile(shot_triage, os.path.join(ARTIFACT_DIR, "view-projects-triage.png"))
 
     # 6. Test clicking "Configuración & Auth"
     page.locator("aside nav button:has-text('Configuración & Auth')").click()

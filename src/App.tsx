@@ -19,7 +19,7 @@ import { useStore } from './store/useStore';
 import { ColumnId } from './types/issue';
 import { supabase } from './lib/supabase';
 import { workspaceService } from './services/workspaceService';
-import { IssueRepository, LocalIssueRepository, SupabaseIssueRepository } from './services/issueRepository';
+import { IssueRepository, SupabaseIssueRepository } from './services/issueRepository';
 
 export const App: React.FC = () => {
   const queryClient = useQueryClient();
@@ -30,8 +30,9 @@ export const App: React.FC = () => {
     setIsCreateModalOpen, 
     selectedIssue, 
     setSelectedIssue,
-    dataMode,
     activeRepoId,
+    setActiveRepoId,
+    setActiveRepoFullName,
     currentUserEmail,
     setCurrentUserEmail
   } = useStore();
@@ -50,18 +51,33 @@ export const App: React.FC = () => {
     workspaceService.getCurrentUser().then((user) => {
       if (user?.email) {
         setCurrentUserEmail(user.email);
+        workspaceService.listWorkspaces().then((list) => {
+          if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
+            setActiveRepoId(list[0].repos[0].id);
+            setActiveRepoFullName(list[0].repos[0].fullName);
+          }
+        });
       }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUserEmail(session?.user?.email || null);
+      const email = session?.user?.email || null;
+      setCurrentUserEmail(email);
+      if (email) {
+        workspaceService.listWorkspaces().then((list) => {
+          if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
+            setActiveRepoId(list[0].repos[0].id);
+            setActiveRepoFullName(list[0].repos[0].fullName);
+          }
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['issues'] });
     });
 
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, [setCurrentUserEmail, queryClient]);
+  }, [setCurrentUserEmail, activeRepoId, queryClient]);
 
   // Global keyboard shortcuts (C to create issue, Esc to close modal/drawer)
   useEffect(() => {
@@ -90,21 +106,25 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCreateModalOpen, selectedIssue, setIsCreateModalOpen, setSelectedIssue]);
 
-  // Issue repository selection
+  // Issue repository selection: Exclusivamente Supabase Cloud
   const getRepository = (): IssueRepository => {
-    if (dataMode === 'cloud' && activeRepoId && currentUserEmail) {
-      return new SupabaseIssueRepository(supabase, activeRepoId, {
-        name: currentUserEmail.split('@')[0],
-        role: 'developer'
-      });
-    }
-    return new LocalIssueRepository();
+    return new SupabaseIssueRepository(supabase, activeRepoId || '', {
+      name: currentUserEmail ? currentUserEmail.split('@')[0] : 'Developer',
+      role: 'developer'
+    });
   };
 
-  // Fetch issues via TanStack React Query
+  // Fetch issues via TanStack React Query from Supabase Cloud
   const { data: issues = [] } = useQuery({
-    queryKey: ['issues', dataMode, activeRepoId, currentUserEmail],
-    queryFn: () => getRepository().list()
+    queryKey: ['issues', activeRepoId, currentUserEmail],
+    queryFn: async () => {
+      try {
+        return await getRepository().list();
+      } catch (e) {
+        console.warn('Supabase fetch notice:', e);
+        return [];
+      }
+    }
   });
 
   // Calculate counts per column for mobile tabs

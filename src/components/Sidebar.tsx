@@ -11,7 +11,6 @@ import {
   LogOut, 
   Sparkles, 
   Cloud, 
-  HardDrive, 
   Users 
 } from 'lucide-react';
 import { useStore, ActiveView } from '../store/useStore';
@@ -24,7 +23,6 @@ export const Sidebar: React.FC = () => {
     setIsWorkspaceModalOpen,
     setIsAuthModalOpen,
     activeRepoFullName,
-    dataMode,
     currentUserEmail,
     activeView,
     setActiveView
@@ -72,17 +70,8 @@ export const Sidebar: React.FC = () => {
                   {activeRepoFullName}
                 </span>
                 <span className="font-mono text-[10px] text-text-secondary dark:text-dark-text-muted flex items-center gap-1">
-                  {dataMode === 'cloud' ? (
-                    <>
-                      <Cloud className="w-2.5 h-2.5 text-brand" />
-                      <span className="text-brand font-semibold">boxtools Cloud</span>
-                    </>
-                  ) : (
-                    <>
-                      <HardDrive className="w-2.5 h-2.5 text-emerald-500" />
-                      <span>Modo Local</span>
-                    </>
-                  )}
+                  <Cloud className="w-2.5 h-2.5 text-brand" />
+                  <span className="text-brand font-semibold">Supabase Cloud (boxtools)</span>
                 </span>
               </div>
             </div>

@@ -62,22 +62,38 @@ export class SupabaseIssueRepository implements IssueRepository {
   ) {}
 
   async list(): Promise<Issue[]> {
-    const rows = unwrap<IssueRow[]>(
-      await this.client
-        .from('ls_issues')
-        .select('*, ls_subtasks(*), ls_comments(*)')
-        .eq('repository_id', this.repositoryId)
-        .order('number', { ascending: false })
-    );
+    let query = this.client
+      .from('ls_issues')
+      .select('*, ls_subtasks(*), ls_comments(*)')
+      .order('number', { ascending: false });
+
+    if (this.repositoryId && this.repositoryId.trim() !== '' && this.repositoryId !== 'all') {
+      query = query.eq('repository_id', this.repositoryId);
+    }
+
+    const rows = unwrap<IssueRow[]>(await query);
     return (rows ?? []).map(rowToIssue);
   }
 
   async create(input: NewIssueInput): Promise<void> {
+    let targetRepoId = this.repositoryId;
+    if (!targetRepoId || targetRepoId === 'all') {
+      const repos = unwrap<Array<{ id: string }>>(
+        await this.client.from('ls_linked_repositories').select('id').limit(1)
+      );
+      if (repos && repos.length > 0) {
+        targetRepoId = repos[0].id;
+      }
+    }
+    if (!targetRepoId) {
+      throw new Error('No se encontró ningún repositorio vinculado en Supabase Cloud.');
+    }
+
     const created = unwrap<{ id: string; number: number }>(
       await this.client
         .from('ls_issues')
         .insert({
-          repository_id: this.repositoryId,
+          repository_id: targetRepoId,
           title: input.title.trim(),
           description: input.description,
           priority: input.priority,
@@ -99,9 +115,12 @@ export class SupabaseIssueRepository implements IssueRepository {
   }
 
   async move(issueId: number, status: ColumnId): Promise<void> {
-    unwrap(
-      await this.client.from('ls_issues').update({ status }).eq('repository_id', this.repositoryId).eq('number', issueId)
-    );
+    let q = this.client.from('ls_issues').update({ status });
+    if (this.repositoryId && this.repositoryId !== 'all') {
+      q = q.eq('repository_id', this.repositoryId);
+    }
+    q = q.eq('number', issueId);
+    unwrap(await q);
   }
 
   async setSubtaskCompleted(_issueId: number, subtaskId: string, completed: boolean): Promise<void> {
@@ -109,26 +128,23 @@ export class SupabaseIssueRepository implements IssueRepository {
   }
 
   async addComment(issueId: number, author: string, content: string): Promise<void> {
-    const issue = unwrap<{ id: string }>(
-      await this.client
-        .from('ls_issues')
-        .select('id')
-        .eq('repository_id', this.repositoryId)
-        .eq('number', issueId)
-        .maybeSingle()
-    );
+    let q = this.client.from('ls_issues').select('id');
+    if (this.repositoryId && this.repositoryId !== 'all') {
+      q = q.eq('repository_id', this.repositoryId);
+    }
+    q = q.eq('number', issueId);
+    const issue = unwrap<{ id: string }>(await q.maybeSingle());
     if (!issue) throw new Error(`Issue #${issueId} no encontrado`);
     unwrap(await this.client.from('ls_comments').insert({ issue_id: issue.id, author_name: author, content }));
   }
 
   async setPriority(issueId: number, priority: Priority): Promise<void> {
-    unwrap(
-      await this.client
-        .from('ls_issues')
-        .update({ priority })
-        .eq('repository_id', this.repositoryId)
-        .eq('number', issueId)
-    );
+    let q = this.client.from('ls_issues').update({ priority });
+    if (this.repositoryId && this.repositoryId !== 'all') {
+      q = q.eq('repository_id', this.repositoryId);
+    }
+    q = q.eq('number', issueId);
+    unwrap(await q);
   }
 }
 

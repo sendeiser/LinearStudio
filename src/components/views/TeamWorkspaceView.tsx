@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, Shield, Cloud, HardDrive, Building, Layers } from 'lucide-react';
+import { Users, UserPlus, Shield, Cloud, Building, Layers } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { workspaceService } from '../../services/workspaceService';
 
@@ -22,9 +22,7 @@ const DEFAULT_MEMBERS: Member[] = [
 export const TeamWorkspaceView: React.FC = () => {
   const { 
     currentUserEmail, 
-    dataMode, 
     activeRepoFullName, 
-    setIsAuthModalOpen,
     setIsWorkspaceModalOpen 
   } = useStore();
 
@@ -38,7 +36,7 @@ export const TeamWorkspaceView: React.FC = () => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
 
-    if (dataMode === 'cloud' && currentUserEmail) {
+    if (currentUserEmail) {
       try {
         await workspaceService.inviteMember('default-ws', inviteEmail, inviteRole);
         setFeedback(`✓ Invitación enviada con éxito a ${inviteEmail} en Supabase Cloud.`);
@@ -75,13 +73,9 @@ export const TeamWorkspaceView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-text-primary dark:text-dark-text">Workspace: {activeRepoFullName}</h1>
-              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold border flex items-center gap-1 ${
-                dataMode === 'cloud'
-                  ? 'bg-blue-100 dark:bg-blue-950/40 text-brand border-blue-300'
-                  : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 border-emerald-300'
-              }`}>
-                {dataMode === 'cloud' ? <Cloud className="w-2.5 h-2.5" /> : <HardDrive className="w-2.5 h-2.5" />}
-                {dataMode === 'cloud' ? 'Supabase Cloud (boxtools)' : 'Modo Local Activo'}
+              <span className="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold border flex items-center gap-1 bg-blue-100 dark:bg-blue-950/40 text-brand border-blue-300">
+                <Cloud className="w-2.5 h-2.5" />
+                <span>Supabase Cloud (boxtools) Activo</span>
               </span>
             </div>
             <p className="text-xs text-text-secondary dark:text-dark-text-muted mt-0.5">
@@ -91,23 +85,13 @@ export const TeamWorkspaceView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {dataMode === 'local' ? (
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="py-1.5 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs shadow-sm flex items-center gap-1.5"
-            >
-              <Cloud className="w-3.5 h-3.5" />
-              <span>Conectar Supabase Cloud</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsWorkspaceModalOpen(true)}
-              className="py-1.5 px-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle text-text-primary font-bold text-xs flex items-center gap-1.5"
-            >
-              <Layers className="w-3.5 h-3.5 text-brand" />
-              <span>Cambiar Workspace</span>
-            </button>
-          )}
+          <button
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            className="py-1.5 px-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle text-text-primary font-bold text-xs flex items-center gap-1.5 hover:border-brand/40"
+          >
+            <Layers className="w-3.5 h-3.5 text-brand" />
+            <span>Gestionar Workspaces</span>
+          </button>
         </div>
       </div>
 

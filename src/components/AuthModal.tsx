@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, Mail, UserPlus, LogIn, LogOut, Cloud, HardDrive, CheckCircle2 } from 'lucide-react';
+import { X, Lock, Mail, UserPlus, LogIn, LogOut, Cloud, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { workspaceService } from '../services/workspaceService';
 
@@ -9,8 +9,6 @@ export const AuthModal: React.FC = () => {
     setIsAuthModalOpen, 
     currentUserEmail, 
     setCurrentUserEmail,
-    dataMode,
-    setDataMode,
     setIsWorkspaceModalOpen
   } = useStore();
 
@@ -33,12 +31,10 @@ export const AuthModal: React.FC = () => {
       if (isRegister) {
         const user = await workspaceService.signUp(email, password);
         setCurrentUserEmail(user.email || email);
-        setDataMode('cloud');
         setSuccessMsg('¡Usuario registrado con éxito! Sesión iniciada en Supabase Cloud.');
       } else {
         const user = await workspaceService.signIn(email, password);
         setCurrentUserEmail(user.email || email);
-        setDataMode('cloud');
         setSuccessMsg('Sesión iniciada correctamente.');
       }
       setTimeout(() => {
@@ -58,8 +54,7 @@ export const AuthModal: React.FC = () => {
       // Safe fallback
     }
     setCurrentUserEmail(null);
-    setDataMode('local');
-    setSuccessMsg('Sesión cerrada. Has vuelto al Modo Local / Offline.');
+    setSuccessMsg('Sesión cerrada en Supabase Cloud.');
   };
 
   return (
@@ -81,47 +76,16 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Data Mode Switcher */}
-        <div className="p-4 border-b border-border-subtle dark:border-dark-border bg-canvas dark:bg-dark-canvas/50 flex flex-col gap-2">
-          <span className="text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider">
-            Modo de Datos Activo
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setDataMode('local')}
-              className={`p-2.5 rounded-lg border flex flex-col items-start gap-1 transition-all ${
-                dataMode === 'local'
-                  ? 'border-brand bg-brand-subtle/30 dark:bg-dark-brand/20 ring-1 ring-brand'
-                  : 'border-border-subtle dark:border-dark-border bg-surface dark:bg-dark-surface hover:bg-surface-subtle'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-text-primary dark:text-dark-text">
-                <HardDrive className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Modo Local</span>
-              </div>
-              <span className="text-[10px] text-text-secondary dark:text-dark-text-muted leading-tight">
-                Offline, sin login requerido.
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDataMode('cloud')}
-              className={`p-2.5 rounded-lg border flex flex-col items-start gap-1 transition-all ${
-                dataMode === 'cloud'
-                  ? 'border-brand bg-brand-subtle/30 dark:bg-dark-brand/20 ring-1 ring-brand'
-                  : 'border-border-subtle dark:border-dark-border bg-surface dark:bg-dark-surface hover:bg-surface-subtle'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-text-primary dark:text-dark-text">
-                <Cloud className="w-3.5 h-3.5 text-brand dark:text-dark-brand" />
-                <span>Supabase Cloud</span>
-              </div>
-              <span className="text-[10px] text-text-secondary dark:text-dark-text-muted leading-tight">
-                BD compartida con boxtools.
-              </span>
-            </button>
+        {/* Supabase Cloud Banner */}
+        <div className="p-3.5 border-b border-border-subtle dark:border-dark-border bg-brand/5 dark:bg-dark-brand/10 flex items-center gap-2.5">
+          <Cloud className="w-4 h-4 text-brand dark:text-dark-brand shrink-0" />
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-text-primary dark:text-dark-text">
+              Supabase Cloud (boxtools)
+            </span>
+            <span className="text-[10px] text-text-secondary dark:text-dark-text-muted">
+              Autenticación y sincronización en vivo en la base de datos compartida.
+            </span>
           </div>
         </div>
 

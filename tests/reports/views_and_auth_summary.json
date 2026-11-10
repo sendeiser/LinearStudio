@@ -4,7 +4,7 @@
     "sprints": true,
     "team": true,
     "pull_requests": true,
-    "copilot": true,
+    "projects_triage": true,
     "settings": true,
     "board": true
   },
