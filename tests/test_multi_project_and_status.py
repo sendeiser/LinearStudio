@@ -83,3 +83,4 @@ with open(os.path.join(WORKSPACE_DIR, "tests", "reports", "triage_test_results.j
     json.dump(test_results, f, indent=2)
 
 print("TRIAGE_TEST_COMPLETED:", json.dumps(test_results))
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
   User, 
@@ -14,12 +14,21 @@ import {
   LogIn, 
   UserPlus,
   Shield,
-  Database
+  Database,
+  Key,
+  RefreshCw,
+  ExternalLink,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { workspaceService } from '../../services/workspaceService';
+import { githubService } from '../../services/githubService';
+import { dataService } from '../../services/dataService';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const SettingsView: React.FC = () => {
+  const queryClient = useQueryClient();
   const { 
     theme, 
     toggleTheme, 
@@ -28,15 +37,104 @@ export const SettingsView: React.FC = () => {
     currentUserEmail, 
     setCurrentUserEmail,
     activeRepoFullName,
-    setActiveRepoFullName
+    setActiveRepoFullName,
+    githubToken,
+    setGithubToken,
+    githubUser,
+    setGithubUser
   } = useStore();
 
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repoInput, setRepoInput] = useState(activeRepoFullName);
+  const [githubTokenInput, setGithubTokenInput] = useState(githubToken || '');
+  const [showToken, setShowToken] = useState(false);
+  const [validatingGh, setValidatingGh] = useState(false);
+  const [syncingGh, setSyncingGh] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Validate GitHub Token on mount if token is stored
+  useEffect(() => {
+    if (githubToken && !githubUser) {
+      githubService.validateToken(githubToken)
+        .then((user) => setGithubUser(user))
+        .catch(() => setGithubUser(null));
+    }
+  }, [githubToken]);
+
+  const handleConnectGithub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!githubTokenInput.trim()) {
+      setFeedback({ type: 'error', text: 'Por favor ingresa un Personal Access Token (PAT) de GitHub válido.' });
+      return;
+    }
+
+    setValidatingGh(true);
+    setFeedback(null);
+
+    try {
+      const user = await githubService.validateToken(githubTokenInput.trim());
+      setGithubToken(githubTokenInput.trim());
+      setGithubUser(user);
+      setFeedback({ 
+        type: 'success', 
+        text: `✓ ¡GitHub vinculado con éxito como @${user.login} (${user.name || 'Usuario'})!` 
+      });
+    } catch (err: any) {
+      setFeedback({ 
+        type: 'error', 
+        text: `Error al validar token de GitHub: ${err.message}` 
+      });
+    } finally {
+      setValidatingGh(false);
+    }
+  };
+
+  const handleDisconnectGithub = () => {
+    setGithubToken(null);
+    setGithubUser(null);
+    setGithubTokenInput('');
+    githubService.setToken('');
+    setFeedback({ type: 'success', text: 'Token de GitHub desconectado.' });
+  };
+
+  const handleSyncGithubIssues = async () => {
+    if (!repoInput.includes('/')) {
+      setFeedback({ type: 'error', text: 'Especifica un repositorio válido (owner/repo) para sincronizar.' });
+      return;
+    }
+
+    setSyncingGh(true);
+    setFeedback(null);
+
+    try {
+      const remoteIssues = await githubService.fetchRepoIssues(repoInput.trim(), githubToken || undefined);
+      if (remoteIssues.length === 0) {
+        setFeedback({ type: 'success', text: `Sincronización completada: no hay issues abiertos en ${repoInput}.` });
+      } else {
+        for (const r of remoteIssues) {
+          dataService.createIssue({
+            title: r.title,
+            description: r.description,
+            priority: r.priority,
+            status: r.status,
+            projectName: repoInput.trim()
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ['issues'] });
+        setFeedback({ 
+          type: 'success', 
+          text: `✓ ¡${remoteIssues.length} issues sincronizados exitosamente desde GitHub (${repoInput})!` 
+        });
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: `Error de sincronización con GitHub: ${err.message}` });
+    } finally {
+      setSyncingGh(false);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,35 +378,130 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 3: GitHub Integration */}
+        {/* Section 3: GitHub Integration & API Key */}
         <div className="p-4 rounded-xl bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border shadow-sm flex flex-col gap-3.5">
           <div className="flex items-center justify-between border-b border-border-subtle dark:border-dark-border pb-2.5">
             <span className="font-bold text-xs text-text-primary dark:text-dark-text flex items-center gap-2">
               <GitBranch className="w-4 h-4 text-brand dark:text-dark-brand" />
-              <span>Repositorio Vinculado de GitHub</span>
+              <span>Integración con GitHub & API Key</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+              githubUser 
+                ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300'
+            }`}>
+              {githubUser ? 'Conectado a GitHub' : 'Sin Token'}
             </span>
           </div>
 
-          <form onSubmit={handleSaveRepo} className="flex flex-col gap-2.5 text-xs">
+          {/* Connected GitHub Profile Card */}
+          {githubUser ? (
+            <div className="p-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img 
+                  src={githubUser.avatar_url} 
+                  alt={githubUser.login} 
+                  className="w-8 h-8 rounded-full border border-brand/30 shrink-0" 
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-text-primary dark:text-dark-text truncate">
+                    {githubUser.name || githubUser.login}
+                  </span>
+                  <span className="font-mono text-[11px] text-brand truncate">
+                    @{githubUser.login} • {githubUser.public_repos ?? 0} repos
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDisconnectGithub}
+                className="py-1 px-2.5 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-[11px] hover:bg-red-100"
+              >
+                Desconectar
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleConnectGithub} className="flex flex-col gap-2 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-text-secondary dark:text-dark-text-muted mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Key className="w-3 h-3 text-brand" />
+                    <span>Personal Access Token (PAT) / API Key</span>
+                  </span>
+                  <a
+                    href="https://github.com/settings/tokens"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand hover:underline flex items-center gap-0.5 text-[10px]"
+                  >
+                    <span>Generar token</span>
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    required
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx o github_pat_..."
+                    value={githubTokenInput}
+                    onChange={(e) => setGithubTokenInput(e.target.value)}
+                    className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg pl-3 pr-9 py-1.5 font-mono text-xs outline-none focus:border-brand"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                  >
+                    {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={validatingGh}
+                className="py-1.5 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs shadow-sm self-start flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {validatingGh ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+                <span>{validatingGh ? 'Validando con GitHub...' : 'Vincular API Key de GitHub'}</span>
+              </button>
+            </form>
+          )}
+
+          {/* Repo Coordinates & Sync Form */}
+          <form onSubmit={handleSaveRepo} className="flex flex-col gap-2.5 text-xs pt-1 border-t border-border-subtle dark:border-dark-border">
             <div>
               <label className="block text-[10px] font-bold text-text-secondary dark:text-dark-text-muted mb-1">
-                Coordenadas del Repositorio (owner/repo)
+                Coordenadas del Repositorio de GitHub (owner/repo)
               </label>
               <input
                 type="text"
                 required
                 value={repoInput}
                 onChange={(e) => setRepoInput(e.target.value)}
+                placeholder="ej: tincho/hyper-flow o boxtools"
                 className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg px-3 py-1.5 font-mono text-xs outline-none focus:border-brand"
               />
             </div>
 
-            <button
-              type="submit"
-              className="py-1.5 px-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated hover:bg-surface border border-border-subtle text-text-primary font-bold text-xs self-start"
-            >
-              Guardar Repositorio
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                className="py-1.5 px-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated hover:bg-surface border border-border-subtle text-text-primary font-bold text-xs"
+              >
+                Guardar Repositorio
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSyncGithubIssues}
+                disabled={syncingGh}
+                className="py-1.5 px-3 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand font-bold text-xs border border-brand/30 hover:bg-brand/20 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncingGh ? 'animate-spin' : ''}`} />
+                <span>{syncingGh ? 'Sincronizando...' : 'Sincronizar Issues de GitHub'}</span>
+              </button>
+            </div>
           </form>
         </div>
 

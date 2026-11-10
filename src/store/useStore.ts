@@ -33,6 +33,10 @@ interface AppState {
   setActiveRepoFullName: (name: string) => void;
   activeRepoId: string | null;
   setActiveRepoId: (id: string | null) => void;
+  githubToken: string | null;
+  setGithubToken: (token: string | null) => void;
+  githubUser: { login: string; avatar_url: string; name?: string | null; public_repos?: number } | null;
+  setGithubUser: (user: { login: string; avatar_url: string; name?: string | null; public_repos?: number } | null) => void;
   antigravityState: AntigravityProgressState;
   dispatchAntigravity: (issue: Issue) => void;
 }
@@ -84,6 +88,16 @@ export const useStore = create<AppState>((set) => ({
   setActiveRepoFullName: (name) => set({ activeRepoFullName: name }),
   activeRepoId: null,
   setActiveRepoId: (id) => set({ activeRepoId: id }),
+  githubToken: (typeof window !== 'undefined' && localStorage.getItem('github_token')) || null,
+  setGithubToken: (token) => {
+    if (typeof window !== 'undefined') {
+      if (token) localStorage.setItem('github_token', token);
+      else localStorage.removeItem('github_token');
+    }
+    set({ githubToken: token });
+  },
+  githubUser: null,
+  setGithubUser: (user) => set({ githubUser: user }),
   antigravityState: {
     isRunning: false,
     step: 'Idle',

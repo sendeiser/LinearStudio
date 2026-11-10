@@ -74,3 +74,17 @@ python scripts/linear_studio.py scan-todos
 python scripts/linear_studio.py scan-todos --project "boxtools"
 ```
 Scans the current codebase for `// TODO:`, `// FIXME:`, `// BUG:`, `// HACK:`, `// PERF:`, outputs exact file and line locations, and generates the exact copy-paste command for the user to submit each one to Linear Studio.
+
+### 6. GitHub API Key & GitHub Synchronization
+```bash
+# Check GitHub connection & profile
+python scripts/linear_studio.py github-status
+
+# Set and validate Personal Access Token (PAT)
+python scripts/linear_studio.py set-github-token --token ghp_xxxxxxxxxxxxxxxxxxxx
+
+# Sync remote GitHub issues into Linear Studio
+python scripts/linear_studio.py github-sync --repo "tincho/hyper-flow"
+```
+Stores the token securely in `.env.local` (`GITHUB_TOKEN=...`), raising the GitHub API rate limit from 60 req/hr to 5,000 req/hr and enabling private repo synchronization.
+

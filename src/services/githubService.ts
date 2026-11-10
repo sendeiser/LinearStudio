@@ -17,7 +17,121 @@ export interface RawGitHubIssue {
   updated_at: string;
 }
 
+export interface GitHubUser {
+  login: string;
+  id: number;
+  avatar_url: string;
+  name: string | null;
+  bio: string | null;
+  public_repos: number;
+  html_url: string;
+}
+
 class GitHubService {
+  public getToken(): string {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('github_token') || (import.meta as any).env?.VITE_GITHUB_TOKEN || '';
+    }
+    return '';
+  }
+
+  public setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('github_token', token.trim());
+      } else {
+        localStorage.removeItem('github_token');
+      }
+    }
+  }
+
+  public async validateToken(token?: string): Promise<GitHubUser> {
+    const tok = token || this.getToken();
+    if (!tok) {
+      throw new Error('No se proporcionó ningún token de GitHub.');
+    }
+
+    const response = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${tok}`,
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'LinearStudio-Client'
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Token de GitHub inválido o expirado (401 Unauthorized).');
+      }
+      throw new Error(`Error de GitHub API (${response.status}): ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  public async fetchRepoIssues(fullRepo: string, token?: string): Promise<Issue[]> {
+    const { owner, name } = this.parseRepo(fullRepo);
+    const tok = token || this.getToken();
+
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'LinearStudio-Client'
+    };
+    if (tok) {
+      headers['Authorization'] = `Bearer ${tok}`;
+    }
+
+    const url = `https://api.github.com/repos/${owner}/${name}/issues?state=all&per_page=30`;
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`No se pudieron obtener los issues de GitHub (${response.status}): ${response.statusText}`);
+    }
+
+    const rawList: (RawGitHubIssue & { pull_request?: any })[] = await response.json();
+    return rawList
+      .filter((r) => !r.pull_request)
+      .map((r) => {
+        const issue = this.mapToDomainIssue(r);
+        issue.projectName = fullRepo;
+        return issue;
+      });
+  }
+
+  public async createGitHubIssue(
+    fullRepo: string,
+    issueData: { title: string; body?: string; labels?: string[] },
+    token?: string
+  ): Promise<{ number: number; html_url: string }> {
+    const { owner, name } = this.parseRepo(fullRepo);
+    const tok = token || this.getToken();
+    if (!tok) {
+      throw new Error('Se requiere un Token de GitHub con permisos de escritura (repo scope) para crear issues.');
+    }
+
+    const response = await fetch(`https://api.github.com/repos/${owner}/${name}/issues`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tok}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'LinearStudio-Client'
+      },
+      body: JSON.stringify({
+        title: issueData.title,
+        body: issueData.body || '',
+        labels: issueData.labels || ['linear-studio']
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Error al crear issue en GitHub (${response.status}): ${err.message || response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
   public parseRepo(fullRepo: string): GitHubRepoCoordinates {
     const parts = fullRepo.split('/');
     if (parts.length === 2) {

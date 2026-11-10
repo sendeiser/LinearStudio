@@ -35,6 +35,7 @@ SUPABASE_URL = ENV.get("VITE_SUPABASE_URL", "https://ydoviusjpgmjsxpspexu.supaba
 SERVICE_KEY = ENV.get("SUPABASE_SERVICE_ROLE_KEY", "")
 ANON_KEY = ENV.get("VITE_SUPABASE_ANON_KEY", "")
 API_KEY = SERVICE_KEY if SERVICE_KEY else ANON_KEY
+GITHUB_TOKEN = ENV.get("GITHUB_TOKEN", "") or ENV.get("VITE_GITHUB_TOKEN", "")
 
 HEADERS = {
     "apikey": API_KEY,
@@ -42,6 +43,29 @@ HEADERS = {
     "Content-Type": "application/json",
     "Prefer": "return=representation"
 }
+
+def github_request(endpoint, token=None, method="GET", data=None):
+    tok = token or GITHUB_TOKEN
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "LinearStudio-CLI"
+    }
+    if tok:
+        headers["Authorization"] = f"Bearer {tok}"
+    url = f"https://api.github.com/{endpoint.lstrip('/')}"
+    payload = json.dumps(data).encode("utf-8") if data is not None else None
+    req = urllib.request.Request(url, data=payload, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            content = resp.read().decode("utf-8")
+            return json.loads(content) if content else {}
+    except urllib.error.HTTPError as e:
+        err = e.read().decode("utf-8")
+        print(f"[GitHub API Error {e.code}]: {err}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"[Network Error]: {e}", file=sys.stderr)
+        return None
 
 def supabase_request(endpoint, method="GET", data=None):
     if not API_KEY:
@@ -335,6 +359,106 @@ def cmd_scan_todos(args):
     print("\n💡 La persona tiene el control total: copia y ejecuta cualquiera de los comandos anteriores")
     print("o pídele a Antigravity: 'crea el issue [1] en el proyecto boxtools' para crearlo.\n")
 
+def cmd_github_status(args):
+    tok = getattr(args, 'token', None) or GITHUB_TOKEN
+    if not tok:
+        print("\n⚠️  No hay ningún GitHub Token configurado.")
+        print("Configúralo con: python scripts/linear_studio.py set-github-token --token ghp_...")
+        print("o en tu archivo .env.local como GITHUB_TOKEN=ghp_...\n")
+        return
+
+    user = github_request("user", token=tok)
+    if user and "login" in user:
+        print("\n✓ CONEXIÓN CON GITHUB API V3 EXITOSA:")
+        print("=" * 60)
+        print(f"  • Usuario:     @{user.get('login')} ({user.get('name') or 'Sin nombre público'})")
+        print(f"  • Repos:       {user.get('public_repos', 0)} públicos")
+        print(f"  • Perfil URL:  {user.get('html_url')}")
+        print(f"  • Token:       {tok[:6]}...{tok[-4:]} (Válido)")
+        print("=" * 60 + "\n")
+    else:
+        print("Error: No se pudo autenticar con GitHub API. Verifica que tu token tenga permisos 'repo'.")
+
+def cmd_set_github_token(args):
+    token = args.token.strip()
+    if not token:
+        print("Error: El token no puede estar vacío.")
+        sys.exit(1)
+
+    user = github_request("user", token=token)
+    if not user or "login" not in user:
+        print("Error: El token proporcionado no es válido en la API de GitHub.")
+        sys.exit(1)
+
+    lines = []
+    if ENV_FILE.exists():
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            lines = [line for line in f if not line.startswith("GITHUB_TOKEN=") and not line.startswith("VITE_GITHUB_TOKEN=")]
+    lines.append(f"\nGITHUB_TOKEN={token}\n")
+    lines.append(f"VITE_GITHUB_TOKEN={token}\n")
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+    print(f"\n✓ GitHub Token guardado con éxito en .env.local:")
+    print(f"  • Vinculado a: @{user.get('login')} ({user.get('name') or 'Usuario'})")
+    print(f"  • Repos públicos: {user.get('public_repos')}\n")
+
+def cmd_github_sync(args):
+    repo = args.repo.strip()
+    if "/" not in repo:
+        print("Error: El repositorio debe tener el formato owner/repo (ej: tincho/hyper-flow)")
+        sys.exit(1)
+
+    tok = getattr(args, 'token', None) or GITHUB_TOKEN
+    print(f"\n🔄 Sincronizando issues desde GitHub: {repo}...")
+    issues = github_request(f"repos/{repo}/issues?state=all&per_page=30", token=tok)
+    if issues is None:
+        print(f"Error: No se pudieron obtener los issues de {repo}.")
+        sys.exit(1)
+
+    pure_issues = [i for i in issues if "pull_request" not in i]
+    print(f"Encontrados {len(pure_issues)} issues en GitHub ({repo}).")
+
+    projects = get_projects()
+    matched_p = None
+    for p in projects:
+        if repo.lower() in p["full_name"].lower():
+            matched_p = p
+            break
+
+    if not matched_p:
+        ws_list = supabase_request("ls_workspaces?select=id&limit=1")
+        if ws_list:
+            ws_id = ws_list[0]["id"]
+            new_repo = supabase_request("ls_linked_repositories", method="POST", data={
+                "workspace_id": ws_id,
+                "github_repo_id": 9999,
+                "full_name": repo,
+                "default_branch": "main"
+            })
+            matched_p = new_repo[0] if new_repo else None
+
+    if matched_p:
+        for gh_i in pure_issues:
+            existing = supabase_request(f"ls_issues?repository_id=eq.{matched_p['id']}&number=eq.{gh_i['number']}&select=id")
+            if not existing:
+                labels = [l["name"] if isinstance(l, dict) else l for l in gh_i.get("labels", [])]
+                priority = "urgent" if any("urgent" in l.lower() for l in labels) else "medium"
+                status = "done" if gh_i.get("state") == "closed" else "todo"
+                supabase_request("ls_issues", method="POST", data={
+                    "repository_id": matched_p["id"],
+                    "number": gh_i["number"],
+                    "title": gh_i["title"],
+                    "description": gh_i.get("body") or "",
+                    "status": status,
+                    "priority": priority,
+                    "tags": labels or ["github"],
+                    "assignee_name": gh_i.get("user", {}).get("login", "GitHub User")
+                })
+        print(f"✓ Sincronización completada: {len(pure_issues)} issues sincronizados en Linear Studio.\n")
+    else:
+        print(f"✓ Descargados {len(pure_issues)} issues de GitHub.\n")
+
 def main():
     parser = argparse.ArgumentParser(description="Linear Studio & Antigravity Issue Bridge")
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
@@ -368,6 +492,19 @@ def main():
     p_scan.add_argument("--path", help="Directorio a escanear")
     p_scan.add_argument("--project", help="Proyecto objetivo")
 
+    # github-status
+    p_gh_status = subparsers.add_parser("github-status", help="Verificar estado del token y conexión con GitHub")
+    p_gh_status.add_argument("--token", help="Token PAT de GitHub")
+
+    # set-github-token
+    p_gh_set = subparsers.add_parser("set-github-token", help="Guardar y validar Personal Access Token de GitHub en .env.local")
+    p_gh_set.add_argument("--token", required=True, help="Token PAT (ghp_... o github_pat_...)")
+
+    # github-sync
+    p_gh_sync = subparsers.add_parser("github-sync", help="Sincronizar issues reales desde un repositorio de GitHub")
+    p_gh_sync.add_argument("--repo", required=True, help="Repositorio (owner/repo)")
+    p_gh_sync.add_argument("--token", help="Token PAT opcional")
+
     args = parser.parse_args()
 
     if args.command == "list-projects":
@@ -380,6 +517,12 @@ def main():
         cmd_update_status(args)
     elif args.command == "scan-todos":
         cmd_scan_todos(args)
+    elif args.command == "github-status":
+        cmd_github_status(args)
+    elif args.command == "set-github-token":
+        cmd_set_github_token(args)
+    elif args.command == "github-sync":
+        cmd_github_sync(args)
     else:
         parser.print_help()
 
