@@ -110,3 +110,4 @@ with open(os.path.join(WORKSPACE_DIR, "tests", "reports", "landing_and_auth_gate
     json.dump(test_results, f, indent=2)
 
 print("LANDING_AUTH_GATE_TEST_COMPLETED:", json.dumps(test_results))
+
