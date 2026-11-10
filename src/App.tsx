@@ -13,7 +13,7 @@ import { AllIssuesView } from './components/views/AllIssuesView';
 import { SprintsView } from './components/views/SprintsView';
 import { TeamWorkspaceView } from './components/views/TeamWorkspaceView';
 import { PullRequestsView } from './components/views/PullRequestsView';
-import { AntigravityCopilotView } from './components/views/AntigravityCopilotView';
+import { MultiProjectTriageView } from './components/views/MultiProjectTriageView';
 import { SettingsView } from './components/views/SettingsView';
 import { useStore } from './store/useStore';
 import { ColumnId } from './types/issue';
@@ -157,10 +157,10 @@ export const App: React.FC = () => {
             <IssueDetailDrawer />
           </div>
         );
-      case 'copilot':
+      case 'projects_triage':
         return (
           <div className="flex-1 flex overflow-hidden relative">
-            <AntigravityCopilotView />
+            <MultiProjectTriageView issues={issues} />
             <IssueDetailDrawer />
           </div>
         );

@@ -29,6 +29,7 @@ export interface Issue {
   };
   branch?: string;
   prNumber?: number;
+  projectName?: string;
   subtasks: Subtask[];
   comments: Comment[];
   createdAt: string;

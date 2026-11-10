@@ -7,6 +7,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Añadir gráfico de distribución de latencia usando buckets de Prometheus.',
     status: 'backlog',
     priority: 'medium',
+    projectName: 'tincho/hyper-flow',
     tags: ['telemetry', 'metrics'],
     assignee: { name: 'Juan Díaz', avatar: 'JD', role: 'Telemetry Eng' },
     subtasks: [
@@ -28,6 +29,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Optimizar el parser AST eliminando asignaciones redundantes en transformaciones.',
     status: 'backlog',
     priority: 'low',
+    projectName: 'tincho/hyper-flow',
     tags: ['compiler', 'ast'],
     assignee: { name: 'Alex Lee', avatar: 'AL', role: 'Compiler Lead' },
     subtasks: [
@@ -45,6 +47,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Configurar protección contra DoS en endpoints críticos de autenticación y exportación.',
     status: 'todo',
     priority: 'high',
+    projectName: 'tincho/hyper-flow',
     tags: ['api', 'security'],
     assignee: { name: 'Elena Kim', avatar: 'EK', role: 'Backend Security' },
     subtasks: [
@@ -66,6 +69,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Evitar buffer copies repetidas durante el parsing de frames binarios de alta frecuencia.',
     status: 'todo',
     priority: 'urgent',
+    projectName: 'boxtools',
     tags: ['performance', 'networking'],
     assignee: { name: 'Juan Díaz', avatar: 'JD', role: 'Systems Eng' },
     subtasks: [
@@ -83,6 +87,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Bloquear transiciones concurrentes de worktree cuando hay un commit en progreso.',
     status: 'in_progress',
     priority: 'urgent',
+    projectName: 'tincho/linear-studio-github',
     tags: ['git', 'concurrency'],
     assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Tech Lead' },
     subtasks: [
@@ -103,6 +108,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Permitir consultas unificadas combinando repositorios de frontend y backend.',
     status: 'in_progress',
     priority: 'medium',
+    projectName: 'tincho/hyper-flow',
     tags: ['graphql', 'api'],
     assignee: { name: 'Alex Lee', avatar: 'AL', role: 'Compiler Lead' },
     subtasks: [
@@ -119,6 +125,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Implementar autenticación WebAuthn FIDO2 para credenciales corporativas.',
     status: 'in_review',
     priority: 'high',
+    projectName: 'boxtools',
     tags: ['security', 'auth'],
     assignee: { name: 'Elena Kim', avatar: 'EK', role: 'Backend Security' },
     subtasks: [
@@ -138,6 +145,7 @@ const INITIAL_ISSUES: Issue[] = [
     description: 'Cron job que compila métricas de p99 y envía resumen gráfico los lunes.',
     status: 'done',
     priority: 'low',
+    projectName: 'tincho/linear-studio-github',
     tags: ['ci', 'automation'],
     assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Tech Lead' },
     subtasks: [
@@ -243,7 +251,7 @@ class DataService {
     return this.getIssueById(issueId);
   }
 
-  public createIssue(data: { title: string; description: string; priority: Priority; status: ColumnId }): Issue {
+  public createIssue(data: { title: string; description: string; priority: Priority; status: ColumnId; projectName?: string }): Issue {
     const newId = Math.floor(Math.random() * 800) + 200;
     const newIssue: Issue = {
       id: newId,
@@ -251,6 +259,7 @@ class DataService {
       description: data.description,
       status: data.status,
       priority: data.priority,
+      projectName: data.projectName || 'tincho/hyper-flow',
       tags: ['feature'],
       assignee: {
         name: 'TinChoX',

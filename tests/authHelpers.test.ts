@@ -1,3 +1,4 @@
+// TODO: Implementar validación de nombres de workspace con caracteres unicode y emojis
 import { describe, it, expect } from 'vitest';
 import { slugify, isValidRepoName, friendlyAuthError } from '../src/services/authHelpers';
 

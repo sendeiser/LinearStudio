@@ -6,7 +6,7 @@ import {
   GitPullRequest, 
   Settings, 
   Plus, 
-  Bot, 
+  Layers, 
   ChevronsUpDown, 
   LogOut, 
   Sparkles, 
@@ -33,10 +33,10 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { id: 'board' as ActiveView, label: 'Tablero Activo', icon: Kanban },
     { id: 'all_issues' as ActiveView, label: 'Todos los Issues', icon: ListTodo },
+    { id: 'projects_triage' as ActiveView, label: 'Proyectos & Triage Global', icon: Layers, badge: 'MULTI' },
     { id: 'sprints' as ActiveView, label: 'Hitos & Sprints', icon: Flag },
     { id: 'team' as ActiveView, label: 'Equipo & Workspaces', icon: Users },
     { id: 'pull_requests' as ActiveView, label: 'Pull Requests', icon: GitPullRequest, badge: 3 },
-    { id: 'copilot' as ActiveView, label: 'Antigravity Copilot', icon: Bot, badge: 'AI', isAi: true },
     { id: 'settings' as ActiveView, label: 'Configuración & Auth', icon: Settings }
   ];
 
@@ -116,24 +116,14 @@ export const Sidebar: React.FC = () => {
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
                     isActive
-                      ? item.isAi
-                        ? 'bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-200 font-bold border border-purple-300 dark:border-purple-800 shadow-sm'
-                        : 'bg-brand/10 dark:bg-dark-brand/20 text-brand dark:text-dark-brand font-bold shadow-sm'
-                      : item.isAi
-                      ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30'
+                      ? 'bg-brand/10 dark:bg-dark-brand/20 text-brand dark:text-dark-brand font-bold shadow-sm'
                       : 'text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.badge && (
-                    <span
-                      className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                        item.isAi
-                          ? 'bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200'
-                          : 'bg-surface dark:bg-dark-surface border border-border-subtle text-done'
-                      }`}
-                    >
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded font-bold bg-surface dark:bg-dark-surface border border-border-subtle text-done">
                       {item.badge}
                     </span>
                   )}

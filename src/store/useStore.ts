@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { ColumnId, Issue } from '../types/issue';
 import { antigravityService, AntigravityProgressState } from '../services/antigravityService';
 
-export type ActiveView = 'board' | 'all_issues' | 'sprints' | 'team' | 'pull_requests' | 'copilot' | 'settings';
+export type ActiveView = 'board' | 'all_issues' | 'sprints' | 'team' | 'pull_requests' | 'projects_triage' | 'settings';
 
 interface AppState {
   theme: 'light' | 'dark';
