@@ -12,7 +12,7 @@ describe('GitHub Synchronization Service', () => {
     const rawGithubIssue = {
       number: 142,
       title: 'Fix edge function rate limiting',
-      body: 'Details about rate limiting...',
+      body: 'Details about rate limiting...\n\n### Tasks\n- [ ] Setup Redis token bucket\n- [x] Configure 429 Retry-After header',
       state: 'open',
       labels: [{ name: 'bug' }, { name: 'security' }],
       user: { login: 'elena-kim', avatar_url: 'https://github.com/avatar.png' },
@@ -26,6 +26,11 @@ describe('GitHub Synchronization Service', () => {
     expect(domainIssue.tags).toContain('bug');
     expect(domainIssue.tags).toContain('security');
     expect(domainIssue.assignee.name).toBe('elena-kim');
+    expect(domainIssue.subtasks.length).toBe(2);
+    expect(domainIssue.subtasks[0].title).toBe('Setup Redis token bucket');
+    expect(domainIssue.subtasks[0].completed).toBe(false);
+    expect(domainIssue.subtasks[1].title).toBe('Configure 429 Retry-After header');
+    expect(domainIssue.subtasks[1].completed).toBe(true);
   });
 
   it('should format issue into GitHub markdown export', () => {

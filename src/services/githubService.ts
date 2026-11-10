@@ -155,6 +155,21 @@ class GitHubService {
 
     const assignedUser = raw.assignee || raw.user || { login: 'Tincho' };
 
+    // Extraer subtareas automáticas de checklists markdown de GitHub (- [ ] o - [x])
+    const subtasks = [];
+    if (raw.body) {
+      const taskRegex = /^\s*-\s*\[([ xX])\]\s+(.+)$/gm;
+      let match;
+      let idx = 1;
+      while ((match = taskRegex.exec(raw.body)) !== null) {
+        subtasks.push({
+          id: `st_${idx++}`,
+          title: match[2].trim(),
+          completed: match[1].toLowerCase() === 'x'
+        });
+      }
+    }
+
     return {
       id: raw.number,
       title: raw.title,
@@ -167,11 +182,62 @@ class GitHubService {
         avatar: assignedUser.login.slice(0, 2).toUpperCase(),
         role: 'Collaborator'
       },
-      subtasks: [],
+      subtasks,
       comments: [],
       createdAt: raw.created_at,
       updatedAt: raw.updated_at
     };
+  }
+
+  public async fetchIssueComments(fullRepo: string, issueNumber: number, token?: string): Promise<any[]> {
+    const { owner, name } = this.parseRepo(fullRepo);
+    const tok = token || this.getToken();
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'LinearStudio-Client'
+    };
+    if (tok) headers['Authorization'] = `Bearer ${tok}`;
+
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}/comments`, { headers });
+      if (!res.ok) return [];
+      const rawComments = await res.json();
+      return rawComments.map((c: any) => ({
+        id: String(c.id),
+        author: c.user?.login || 'GitHub User',
+        avatar: (c.user?.login || 'GH').slice(0, 2).toUpperCase(),
+        content: c.body || '',
+        createdAt: new Date(c.created_at).toLocaleDateString()
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  public async updateGitHubIssue(
+    fullRepo: string,
+    issueNumber: number,
+    updates: { state?: 'open' | 'closed'; title?: string; body?: string; labels?: string[] },
+    token?: string
+  ): Promise<any> {
+    const { owner, name } = this.parseRepo(fullRepo);
+    const tok = token || this.getToken();
+    if (!tok) throw new Error('Se requiere un Token de GitHub para actualizar issues.');
+
+    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${tok}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'LinearStudio-Client'
+      },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) {
+      throw new Error(`Error al actualizar issue #${issueNumber} en GitHub.`);
+    }
+    return await res.json();
   }
 
   public formatForExport(issue: Issue): string {

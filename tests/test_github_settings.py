@@ -66,3 +66,4 @@ with open(os.path.join(WORKSPACE_DIR, "tests", "reports", "github_settings_test.
     json.dump(test_results, f, indent=2)
 
 print("GITHUB_SETTINGS_TEST_COMPLETED:", json.dumps(test_results))
+

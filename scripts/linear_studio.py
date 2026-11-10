@@ -445,7 +445,7 @@ def cmd_github_sync(args):
                 labels = [l["name"] if isinstance(l, dict) else l for l in gh_i.get("labels", [])]
                 priority = "urgent" if any("urgent" in l.lower() for l in labels) else "medium"
                 status = "done" if gh_i.get("state") == "closed" else "todo"
-                supabase_request("ls_issues", method="POST", data={
+                created_rows = supabase_request("ls_issues", method="POST", data={
                     "repository_id": matched_p["id"],
                     "number": gh_i["number"],
                     "title": gh_i["title"],
@@ -455,6 +455,17 @@ def cmd_github_sync(args):
                     "tags": labels or ["github"],
                     "assignee_name": gh_i.get("user", {}).get("login", "GitHub User")
                 })
+                # Extraer subtareas markdown (- [ ] o - [x])
+                if created_rows and len(created_rows) > 0 and gh_i.get("body"):
+                    new_issue_id = created_rows[0]["id"]
+                    task_matches = re.findall(r'^\s*-\s*\[([ xX])\]\s+(.+)$', gh_i["body"], re.MULTILINE)
+                    for pos, (checked, st_title) in enumerate(task_matches):
+                        supabase_request("ls_subtasks", method="POST", data={
+                            "issue_id": new_issue_id,
+                            "title": st_title.strip(),
+                            "completed": checked.lower() == "x",
+                            "position": pos
+                        })
         print(f"✓ Sincronización completada: {len(pure_issues)} issues sincronizados en Linear Studio.\n")
     else:
         print(f"✓ Descargados {len(pure_issues)} issues de GitHub.\n")
