@@ -1,0 +1,29 @@
+{
+  "desktop": {
+    "dark_mode": true
+  },
+  "tablet": {},
+  "mobile": {
+    "tabs_tested": {
+      "Backlog": true,
+      "Por Hacer": true,
+      "En Progreso": true,
+      "En Revisi\u00f3n": true,
+      "Completado": true
+    }
+  },
+  "interactions": {
+    "search_filtered": false,
+    "filter_seguridad": true,
+    "new_issue_created": true,
+    "card_moved": true,
+    "subtask_toggled": true,
+    "comment_posted": false,
+    "antigravity_resolved": true
+  },
+  "overflow_checks": {
+    "desktop_1440": true,
+    "tablet_768": true,
+    "mobile_375": true
+  }
+}

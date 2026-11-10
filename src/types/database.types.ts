@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -12,7 +12,7 @@ export type AgentExecutionStatus = 'idle' | 'running' | 'pr_ready' | 'error';
 export interface Database {
   public: {
     Tables: {
-      workspaces: {
+      ls_workspaces: {
         Row: {
           id: string;
           name: string;
@@ -38,7 +38,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      workspace_members: {
+      ls_workspace_members: {
         Row: {
           id: string;
           workspace_id: string;
@@ -61,7 +61,7 @@ export interface Database {
           joined_at?: string;
         };
       };
-      linked_repositories: {
+      ls_linked_repositories: {
         Row: {
           id: string;
           workspace_id: string;
@@ -93,7 +93,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      kanban_columns: {
+      ls_kanban_columns: {
         Row: {
           id: string;
           repository_id: string;
@@ -122,7 +122,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      issue_team_metadata: {
+      ls_issue_team_metadata: {
         Row: {
           id: string;
           github_repo_id: number;
@@ -157,7 +157,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      ai_agent_logs: {
+      ls_ai_agent_logs: {
         Row: {
           id: string;
           issue_number: number;
@@ -189,4 +189,5 @@ export interface Database {
     };
   };
 }
+
 
