@@ -75,3 +75,4 @@ with sync_playwright() as p:
     browser.close()
 
 print("DUAL THEME & ANTIGRAVITY PLAYWRIGHT TEST COMPLETED SUCCESSFULLY")
+

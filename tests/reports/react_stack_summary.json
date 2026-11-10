@@ -1,0 +1,39 @@
+{
+  "viewports": [
+    {
+      "name": "react-light-desktop-1440",
+      "width": 1440,
+      "overflow": {
+        "docWidth": 1440,
+        "scrollWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "hasOverflow": false
+      }
+    },
+    {
+      "name": "react-light-tablet-768",
+      "width": 768,
+      "overflow": {
+        "docWidth": 768,
+        "scrollWidth": 768,
+        "bodyScrollWidth": 768,
+        "hasOverflow": false
+      }
+    },
+    {
+      "name": "react-light-mobile-375",
+      "width": 375,
+      "overflow": {
+        "docWidth": 375,
+        "scrollWidth": 375,
+        "bodyScrollWidth": 375,
+        "hasOverflow": false
+      }
+    }
+  ],
+  "theme_toggle_dark": true,
+  "theme_toggle_light": true,
+  "filter_tested": true,
+  "create_issue": true,
+  "antigravity_agent": true
+}
