@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   ExternalLink, 
@@ -10,17 +10,54 @@ import {
   Play, 
   Brain, 
   CheckCircle, 
-  Loader2 
+  Loader2,
+  Send,
+  MessageSquare,
+  CheckSquare
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
+import { dataService } from '../services/dataService';
+import { Priority } from '../types/issue';
 
 export const IssueDetailDrawer: React.FC = () => {
+  const queryClient = useQueryClient();
   const { selectedIssue, setSelectedIssue, antigravityState, dispatchAntigravity } = useStore();
+  const [newComment, setNewComment] = useState('');
 
   if (!selectedIssue) return null;
 
+  const handleToggleSubtask = (subtaskId: string) => {
+    const updated = dataService.toggleSubtask(selectedIssue.id, subtaskId);
+    if (updated) setSelectedIssue(updated);
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+
+  const handlePriorityChange = (priority: Priority) => {
+    const updated = dataService.updateIssuePriority(selectedIssue.id, priority);
+    if (updated) setSelectedIssue(updated);
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+
+  const handleAddComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    dataService.addComment(selectedIssue.id, 'TinChoX', newComment.trim());
+    const updated = dataService.getIssueById(selectedIssue.id);
+    if (updated) setSelectedIssue(updated);
+    setNewComment('');
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+
+  const completedSubtasks = selectedIssue.subtasks.filter((s) => s.completed).length;
+  const totalSubtasks = selectedIssue.subtasks.length;
+  const subtaskProgress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+
   return (
-    <aside className="fixed inset-y-0 right-0 z-50 w-full sm:w-[500px] bg-surface dark:bg-dark-surface border-l border-border-subtle dark:border-dark-border flex flex-col shadow-flyout transform translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0">
+    <aside 
+      data-testid="issue-detail-drawer"
+      className="fixed inset-y-0 right-0 z-50 w-full sm:w-[500px] bg-surface dark:bg-dark-surface border-l border-border-subtle dark:border-dark-border flex flex-col shadow-flyout transform translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0"
+    >
       {/* Header */}
       <div className="h-14 px-4 bg-surface-subtle dark:bg-dark-surface-elevated border-b border-border-subtle dark:border-dark-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -37,7 +74,7 @@ export const IssueDetailDrawer: React.FC = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-done" /> Abierto
           </span>
           <a
-            href="https://github.com"
+            href={`https://github.com/tincho/hyper-flow/issues/${selectedIssue.id}`}
             target="_blank"
             rel="noreferrer"
             className="p-1 rounded text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface dark:hover:bg-dark-surface transition-colors"
@@ -48,7 +85,7 @@ export const IssueDetailDrawer: React.FC = () => {
           <button
             onClick={() => setSelectedIssue(null)}
             className="p-1.5 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors"
-            title="Cerrar panel"
+            title="Cerrar panel (Esc)"
           >
             <X className="w-4 h-4" />
           </button>
@@ -56,7 +93,7 @@ export const IssueDetailDrawer: React.FC = () => {
       </div>
 
       {/* Antigravity AI Agent Section */}
-      <div className="p-3 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border-b border-purple-200 dark:border-purple-900/50 flex flex-col gap-2">
+      <div className="p-3.5 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border-b border-purple-200 dark:border-purple-900/50 flex flex-col gap-2 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -87,7 +124,7 @@ export const IssueDetailDrawer: React.FC = () => {
             ) : antigravityState.prReady ? (
               <>
                 <CheckCircle className="w-4 h-4 text-emerald-400" />
-                <span>PR Generado por Antigravity</span>
+                <span>PR #{selectedIssue.id + 1} Generado</span>
               </>
             ) : (
               <>
@@ -97,8 +134,8 @@ export const IssueDetailDrawer: React.FC = () => {
             )}
           </button>
           <button
-            onClick={() => alert('✦ AI Triage completado:\n- Prioridad confirmada: ' + selectedIssue.priority + '\n- Estimación recomendada: 5 Story Points')}
-            className="py-1.5 px-2.5 rounded-lg border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-xs font-semibold"
+            onClick={() => alert(`✦ Auto-triage Antigravity:\n- Prioridad: ${selectedIssue.priority.toUpperCase()}\n- Complejidad: 3 SP\n- Impacto: Producción`)}
+            className="py-1.5 px-2.5 rounded-lg border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-xs font-semibold transition-colors"
             title="Auto-triage con IA"
           >
             <Brain className="w-4 h-4" />
@@ -107,7 +144,7 @@ export const IssueDetailDrawer: React.FC = () => {
 
         {/* Live Telemetry Progress Card */}
         {antigravityState.isRunning && (
-          <div className="p-2.5 rounded-lg bg-purple-950/20 dark:bg-purple-950/60 border border-purple-500/30 flex flex-col gap-1.5 text-[11px]">
+          <div className="p-2.5 rounded-lg bg-purple-950/20 dark:bg-purple-950/60 border border-purple-500/30 flex flex-col gap-1.5 text-[11px] animate-in fade-in duration-150">
             <div className="flex items-center justify-between text-purple-300 font-mono">
               <span className="flex items-center gap-1.5 font-bold">
                 <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
@@ -121,7 +158,7 @@ export const IssueDetailDrawer: React.FC = () => {
                 style={{ width: `${antigravityState.progress}%` }}
               />
             </div>
-            <code className="font-mono text-[10px] text-purple-200/80 bg-black/30 p-1.5 rounded truncate">
+            <code className="font-mono text-[10px] text-purple-200/90 bg-black/40 p-1.5 rounded truncate">
               {antigravityState.log}
             </code>
           </div>
@@ -148,14 +185,23 @@ export const IssueDetailDrawer: React.FC = () => {
               <span>{selectedIssue.assignee.name}</span>
             </div>
           </div>
+
           <div className="flex items-center justify-between">
             <span className="text-text-secondary dark:text-dark-text-muted flex items-center gap-1.5 font-medium">
               <Flag className="w-3.5 h-3.5 text-urgent" /> Prioridad
             </span>
-            <span className="px-2 py-0.5 rounded bg-urgent-bg dark:bg-rose-950/40 border border-urgent-border dark:border-rose-800 text-urgent dark:text-rose-300 font-mono text-[10px] font-bold">
-              {selectedIssue.priority.toUpperCase()}
-            </span>
+            <select
+              value={selectedIssue.priority}
+              onChange={(e) => handlePriorityChange(e.target.value as Priority)}
+              className="bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border text-text-primary dark:text-dark-text text-[11px] font-bold rounded px-2 py-0.5 outline-none focus:border-brand cursor-pointer"
+            >
+              <option value="urgent">🔥 Urgente</option>
+              <option value="high">⚠️ Alta</option>
+              <option value="medium">🔹 Media</option>
+              <option value="low">☕ Baja</option>
+            </select>
           </div>
+
           <div className="flex items-center justify-between">
             <span className="text-text-secondary dark:text-dark-text-muted flex items-center gap-1.5 font-medium">
               <Tag className="w-3.5 h-3.5" /> Etiquetas
@@ -168,6 +214,7 @@ export const IssueDetailDrawer: React.FC = () => {
               ))}
             </div>
           </div>
+
           {selectedIssue.branch && (
             <div className="flex items-center justify-between">
               <span className="text-text-secondary dark:text-dark-text-muted flex items-center gap-1.5 font-medium">
@@ -185,41 +232,99 @@ export const IssueDetailDrawer: React.FC = () => {
           <span className="text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider">
             Descripción
           </span>
-          <div className="p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border text-text-primary dark:text-dark-text leading-relaxed space-y-2 shadow-sm">
-            <p>{selectedIssue.description}</p>
+          <div className="p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border text-text-primary dark:text-dark-text leading-relaxed shadow-sm">
+            <p>{selectedIssue.description || 'Sin descripción adicional para este issue.'}</p>
           </div>
         </div>
 
         {/* Checklist Subtasks */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider">
-              Subtareas (Checklist)
+            <span className="text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider flex items-center gap-1">
+              <CheckSquare className="w-3.5 h-3.5" /> Subtareas ({completedSubtasks}/{totalSubtasks})
             </span>
             <span className="font-mono text-[11px] text-brand dark:text-dark-brand font-bold">
-              {selectedIssue.subtasks.filter((s) => s.completed).length} de {selectedIssue.subtasks.length} completadas
+              {subtaskProgress}%
             </span>
           </div>
-          <div className="space-y-1.5">
+
+          {/* Subtasks Progress Bar */}
+          <div className="w-full bg-surface-subtle dark:bg-dark-surface-elevated rounded-full h-1.5 overflow-hidden border border-border-subtle dark:border-dark-border">
+            <div 
+              className="bg-brand dark:bg-dark-brand h-1.5 rounded-full transition-all duration-300"
+              style={{ width: `${subtaskProgress}%` }}
+            />
+          </div>
+
+          <div className="space-y-1.5 pt-1">
             {selectedIssue.subtasks.map((st) => (
               <label 
                 key={st.id} 
-                className="flex items-center gap-2.5 p-2 rounded-lg bg-surface dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border hover:bg-surface-subtle dark:hover:bg-dark-surface cursor-pointer shadow-sm"
+                onClick={() => handleToggleSubtask(st.id)}
+                className="flex items-center gap-2.5 p-2 rounded-lg bg-surface dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border hover:bg-surface-subtle dark:hover:bg-dark-surface cursor-pointer shadow-sm select-none transition-colors"
               >
                 <input 
                   type="checkbox" 
-                  defaultChecked={st.completed} 
-                  className="rounded border-border-subtle text-brand focus:ring-brand" 
+                  checked={st.completed}
+                  onChange={() => {}} // Controlled by label onClick
+                  className="rounded border-border-subtle text-brand focus:ring-brand cursor-pointer" 
                 />
-                <span className={st.completed ? 'line-through text-text-muted' : 'text-text-primary dark:text-dark-text font-medium'}>
+                <span className={st.completed ? 'line-through text-text-muted font-normal' : 'text-text-primary dark:text-dark-text font-medium'}>
                   {st.title}
                 </span>
               </label>
             ))}
           </div>
         </div>
+
+        {/* Discussion / Comments Stream */}
+        <div className="flex flex-col gap-2.5 pt-2 border-t border-border-subtle dark:border-dark-border">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider">
+            <MessageSquare className="w-3.5 h-3.5" /> Discusión ({selectedIssue.comments.length})
+          </div>
+
+          {/* Existing Comments */}
+          <div className="space-y-2">
+            {selectedIssue.comments.map((comment) => (
+              <div 
+                key={comment.id}
+                className="p-2.5 rounded-lg bg-surface dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border flex flex-col gap-1 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-[11px] text-text-primary dark:text-dark-text">
+                    <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[9px]">
+                      {comment.avatar}
+                    </span>
+                    <span>{comment.author}</span>
+                  </div>
+                  <span className="font-mono text-[9px] text-text-muted">{comment.createdAt}</span>
+                </div>
+                <p className="text-text-secondary dark:text-dark-text-muted text-[11px] leading-relaxed">
+                  {comment.content}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* New Comment Input */}
+          <form onSubmit={handleAddComment} className="flex gap-1.5 pt-1">
+            <input
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Escribe un comentario o actualización..."
+              className="flex-1 bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border rounded-lg px-2.5 py-1.5 text-xs text-text-primary dark:text-dark-text placeholder:text-text-muted focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!newComment.trim()}
+              className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-hover dark:bg-dark-brand dark:hover:bg-dark-brand-hover text-white text-xs font-bold shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        </div>
       </div>
     </aside>
   );
 };
-

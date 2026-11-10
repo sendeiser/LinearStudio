@@ -1,7 +1,10 @@
 import React from 'react';
+import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { useQueryClient } from '@tanstack/react-query';
 import { ColumnId, Issue } from '../types/issue';
 import { KanbanColumn } from './KanbanColumn';
 import { useStore } from '../store/useStore';
+import { dataService } from '../services/dataService';
 
 interface KanbanBoardProps {
   issues: Issue[];
@@ -16,7 +19,19 @@ const COLUMNS: { id: ColumnId; title: string }[] = [
 ];
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
+  const queryClient = useQueryClient();
   const { searchQuery, activeFilter } = useStore();
+
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+
+    const issueId = Number(draggableId);
+    const newStatus = destination.droppableId as ColumnId;
+    dataService.moveIssue(issueId, newStatus);
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
 
   // Filter issues based on search & active filter chip
   const filteredIssues = issues.filter((issue) => {
@@ -39,22 +54,23 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
   });
 
   return (
-    <main 
-      id="board-container" 
-      className="flex-1 overflow-x-auto overflow-y-hidden p-3 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas dark:bg-dark-canvas"
-    >
-      {COLUMNS.map((col) => {
-        const colIssues = filteredIssues.filter((i) => i.status === col.id);
-        return (
-          <KanbanColumn 
-            key={col.id} 
-            id={col.id} 
-            title={col.title} 
-            issues={colIssues} 
-          />
-        );
-      })}
-    </main>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <main 
+        id="board-container" 
+        className="flex-1 overflow-x-auto overflow-y-hidden p-3 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas dark:bg-dark-canvas"
+      >
+        {COLUMNS.map((col) => {
+          const colIssues = filteredIssues.filter((i) => i.status === col.id);
+          return (
+            <KanbanColumn 
+              key={col.id} 
+              id={col.id} 
+              title={col.title} 
+              issues={colIssues} 
+            />
+          );
+        })}
+      </main>
+    </DragDropContext>
   );
 };
-

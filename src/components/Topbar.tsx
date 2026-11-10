@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Menu, Search, Sun, Moon, RefreshCw, Plus } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
@@ -12,6 +12,18 @@ export const Topbar: React.FC = () => {
     setSearchQuery 
   } = useStore();
   const [isSyncing, setIsSyncing] = React.useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSync = () => {
     setIsSyncing(true);
@@ -43,6 +55,7 @@ export const Topbar: React.FC = () => {
         <div className="relative w-full max-w-xs hidden sm:flex items-center ml-3">
           <Search className="w-4 h-4 absolute left-2.5 text-text-muted pointer-events-none" />
           <input 
+            ref={searchInputRef}
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -94,4 +107,3 @@ export const Topbar: React.FC = () => {
     </header>
   );
 };
-

@@ -35,5 +35,8 @@
   "theme_toggle_light": true,
   "filter_tested": true,
   "create_issue": true,
+  "subtasks_interactive": true,
+  "comment_interactive": true,
+  "quick_move_interactive": true,
   "antigravity_agent": true
 }

@@ -1,4 +1,4 @@
-import { ColumnId, Issue } from '../types/issue';
+import { ColumnId, Issue, Priority, Subtask, Comment } from '../types/issue';
 
 const INITIAL_ISSUES: Issue[] = [
   {
@@ -61,91 +61,89 @@ const INITIAL_ISSUES: Issue[] = [
     updatedAt: '2026-11-10T08:00:00Z'
   },
   {
-    id: 177,
-    title: 'OAuth2 token refresh race condition on mobile reconnect',
-    description: 'En reconexiones rápidas de red móvil, múltiples requests paralelos provocan refresh redundante.',
+    id: 156,
+    title: 'Design zero-allocation stream decoder for WebSockets',
+    description: 'Evitar buffer copies repetidas durante el parsing de frames binarios de alta frecuencia.',
     status: 'todo',
     priority: 'urgent',
-    tags: ['bug', 'auth'],
-    assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Lead Architect' },
+    tags: ['performance', 'networking'],
+    assignee: { name: 'Juan Díaz', avatar: 'JD', role: 'Systems Eng' },
     subtasks: [
-      { id: '1', title: 'Reproducir con Network Throttling en DevTools', completed: true },
-      { id: '2', title: 'Implementar deduplicación de Promises de refresh', completed: true }
+      { id: '1', title: 'Definir RingBuffer circular en memoria', completed: true },
+      { id: '2', title: 'Zero-copy slicing con Uint8Array.subarray', completed: true },
+      { id: '3', title: 'Stress test con 10,000 conexiones concurrentes', completed: false }
     ],
     comments: [],
-    createdAt: '2026-11-09T18:00:00Z',
-    updatedAt: '2026-11-10T11:30:00Z'
+    createdAt: '2026-11-06T15:20:00Z',
+    updatedAt: '2026-11-09T18:40:00Z'
   },
   {
-    id: 104,
-    title: 'Optimize WebGL canvas render loop for 60fps',
-    description: 'Detectada caída de frames en escenas complejas por reallocación continua de buffers en el loop de requestAnimationFrame.',
+    id: 108,
+    title: 'Fix race condition on simultaneous workspace branch switch',
+    description: 'Bloquear transiciones concurrentes de worktree cuando hay un commit en progreso.',
     status: 'in_progress',
     priority: 'urgent',
-    tags: ['performance', 'frontend'],
-    assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Lead Graphics Eng' },
-    branch: 'perf/webgl-loop-opt',
+    tags: ['git', 'concurrency'],
+    assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Tech Lead' },
     subtasks: [
-      { id: '1', title: 'Perfilar eventos de frame dropped en DevTools', completed: true },
-      { id: '2', title: 'Pool de buffers estáticos para eliminar GC spikes', completed: true },
-      { id: '3', title: 'Debounce en triggers del ResizeObserver', completed: false },
-      { id: '4', title: 'Fallback de telemetría FPS para dispositivos de baja potencia', completed: false }
+      { id: '1', title: 'Reproducir fallo con test de concurrencia', completed: true },
+      { id: '2', title: 'Implementar filesystem lock con timeout', completed: true },
+      { id: '3', title: 'Limpieza automática de stale lockfiles', completed: true },
+      { id: '4', title: 'Verificación en Windows y Linux', completed: false }
     ],
     comments: [
-      { id: 'c4', author: 'Elena Kim', avatar: 'EK', content: 'Probé el nuevo shader uniform branch y el frametime bajó de 28ms a 14.2ms. ¡Excelente avance! 🚀', createdAt: 'hace 2h' }
+      { id: 'c4', author: 'Elena Kim', avatar: 'EK', content: 'Recomiendo usar flock en POSIX y CreateFileW con exclusividad en Windows.', createdAt: 'hace 6h' }
     ],
-    createdAt: '2026-11-06T09:00:00Z',
-    updatedAt: '2026-11-10T14:00:00Z'
+    createdAt: '2026-11-05T09:00:00Z',
+    updatedAt: '2026-11-10T14:30:00Z'
   },
   {
-    id: 118,
-    title: 'Migrate schema migrations pipeline to native binary',
-    description: 'Reemplazar el runner Node.js antiguo por el CLI nativo compilado para builds más rápidos.',
+    id: 115,
+    title: 'Support multi-repo federation queries in GraphQL gateway',
+    description: 'Permitir consultas unificadas combinando repositorios de frontend y backend.',
     status: 'in_progress',
-    priority: 'high',
-    tags: ['backend', 'rust'],
-    assignee: { name: 'Sam Lee', avatar: 'SL', role: 'DevOps Eng' },
+    priority: 'medium',
+    tags: ['graphql', 'api'],
+    assignee: { name: 'Alex Lee', avatar: 'AL', role: 'Compiler Lead' },
     subtasks: [
-      { id: '1', title: 'Escribir script de integración', completed: true },
-      { id: '2', title: 'Probar en GitHub Actions CI', completed: false }
+      { id: '1', title: 'Definir Apollo Federation v2 schema', completed: true },
+      { id: '2', title: 'Integrar query plan cache con Redis', completed: false }
     ],
     comments: [],
-    createdAt: '2026-11-05T15:00:00Z',
-    updatedAt: '2026-11-09T16:00:00Z'
+    createdAt: '2026-11-04T12:00:00Z',
+    updatedAt: '2026-11-08T16:00:00Z'
   },
   {
-    id: 102,
-    title: 'Multi-tenant isolation barrier verification test suite',
-    description: 'Suite de tests automatizados que asegura que las políticas RLS de Supabase aíslen completamente datos entre organizaciones.',
+    id: 98,
+    title: 'Add biometric auth fallback for macOS Touch ID and Windows Hello',
+    description: 'Implementar autenticación WebAuthn FIDO2 para credenciales corporativas.',
     status: 'in_review',
     priority: 'high',
-    tags: ['security', 'tests'],
-    prNumber: 108,
-    assignee: { name: 'Rita Silva', avatar: 'RS', role: 'QA Lead' },
+    tags: ['security', 'auth'],
+    assignee: { name: 'Elena Kim', avatar: 'EK', role: 'Backend Security' },
     subtasks: [
-      { id: '1', title: 'Test lectura cruzada de issues entre tenants', completed: true },
-      { id: '2', title: 'Test escritura no autorizada en kanban_columns', completed: true },
-      { id: '3', title: 'Verificar error 403 en JWT caducado', completed: true },
-      { id: '4', title: 'Reporte de cobertura en Playwright', completed: true }
+      { id: '1', title: 'Integración WebAuthn API en cliente', completed: true },
+      { id: '2', title: 'Validación criptográfica de challenge en backend', completed: true },
+      { id: '3', title: 'Fallback a 2FA TOTP si no hay sensor', completed: true }
     ],
     comments: [
-      { id: 'c5', author: 'Martin Tincho', avatar: 'MT', content: 'Revisé los tests de RLS en el PR #108. Todos pasando en verde.', createdAt: 'hace 5h' }
+      { id: 'c5', author: 'Juan Díaz', avatar: 'JD', content: 'Probado en Windows Hello con PIN y huella digital, funciona 10/10.', createdAt: 'hace 1d' }
     ],
-    createdAt: '2026-11-04T12:00:00Z',
-    updatedAt: '2026-11-10T13:00:00Z'
+    createdAt: '2026-11-03T08:30:00Z',
+    updatedAt: '2026-11-09T11:20:00Z'
   },
   {
-    id: 97,
-    title: 'Implement zstandard decompression in worker threads',
-    description: 'Descomprimir respuestas de API grandes en background sin bloquear el hilo principal de render.',
+    id: 84,
+    title: 'Automate weekly benchmark reporting to Slack #eng-metrics',
+    description: 'Cron job que compila métricas de p99 y envía resumen gráfico los lunes.',
     status: 'done',
     priority: 'low',
-    tags: ['performance'],
-    assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Lead Architect' },
+    tags: ['ci', 'automation'],
+    assignee: { name: 'Martin Tincho', avatar: 'MT', role: 'Tech Lead' },
     subtasks: [
-      { id: '1', title: 'WebWorker wrapper', completed: true },
-      { id: '2', title: 'Memory transfer buffer', completed: true },
-      { id: '3', title: 'Benchmark en Chrome y Safari', completed: true }
+      { id: '1', title: 'GitHub Action scheduled workflow', completed: true },
+      { id: '2', title: 'Generación de gráfico SVG en headless browser', completed: true },
+      { id: '3', title: 'Webhook payload hacia Slack API', completed: true }
     ],
     comments: [],
     createdAt: '2026-11-01T10:00:00Z',
@@ -157,24 +155,39 @@ class DataService {
   private issues: Issue[];
 
   constructor() {
-    const cached = localStorage.getItem('linear_studio_issues');
-    if (cached) {
+    this.issues = this.loadFromStorage();
+  }
+
+  private loadFromStorage(): Issue[] {
+    if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        this.issues = JSON.parse(cached);
+        const cached = window.localStorage.getItem('linear_studio_issues');
+        if (cached) {
+          return JSON.parse(cached);
+        }
       } catch {
-        this.issues = INITIAL_ISSUES;
+        // Fallback to initial
       }
-    } else {
-      this.issues = INITIAL_ISSUES;
     }
+    return [...INITIAL_ISSUES];
   }
 
   private persist() {
-    localStorage.setItem('linear_studio_issues', JSON.stringify(this.issues));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem('linear_studio_issues', JSON.stringify(this.issues));
+      } catch {
+        // Safe ignore
+      }
+    }
   }
 
   public getIssues(): Issue[] {
     return [...this.issues];
+  }
+
+  public getIssueById(id: number): Issue | undefined {
+    return this.issues.find((i) => i.id === id);
   }
 
   public moveIssue(id: number, newStatus: ColumnId): Issue[] {
@@ -185,7 +198,52 @@ class DataService {
     return [...this.issues];
   }
 
-  public createIssue(data: { title: string; description: string; priority: Issue['priority']; status: ColumnId }): Issue {
+  public toggleSubtask(issueId: number, subtaskId: string): Issue | undefined {
+    this.issues = this.issues.map((issue) => {
+      if (issue.id === issueId) {
+        const updatedSubtasks: Subtask[] = issue.subtasks.map((s) =>
+          s.id === subtaskId ? { ...s, completed: !s.completed } : s
+        );
+        return { ...issue, subtasks: updatedSubtasks, updatedAt: new Date().toISOString() };
+      }
+      return issue;
+    });
+    this.persist();
+    return this.getIssueById(issueId);
+  }
+
+  public addComment(issueId: number, author: string, content: string): Comment {
+    const newComment: Comment = {
+      id: `c_${Date.now()}`,
+      author,
+      avatar: author.slice(0, 2).toUpperCase(),
+      content,
+      createdAt: 'justo ahora'
+    };
+
+    this.issues = this.issues.map((issue) => {
+      if (issue.id === issueId) {
+        return {
+          ...issue,
+          comments: [...issue.comments, newComment],
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return issue;
+    });
+    this.persist();
+    return newComment;
+  }
+
+  public updateIssuePriority(issueId: number, priority: Priority): Issue | undefined {
+    this.issues = this.issues.map((issue) =>
+      issue.id === issueId ? { ...issue, priority, updatedAt: new Date().toISOString() } : issue
+    );
+    this.persist();
+    return this.getIssueById(issueId);
+  }
+
+  public createIssue(data: { title: string; description: string; priority: Priority; status: ColumnId }): Issue {
     const newId = Math.floor(Math.random() * 800) + 200;
     const newIssue: Issue = {
       id: newId,
@@ -213,4 +271,3 @@ class DataService {
 }
 
 export const dataService = new DataService();
-

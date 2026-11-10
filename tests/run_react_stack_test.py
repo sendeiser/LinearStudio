@@ -34,6 +34,9 @@ test_summary = {
     "theme_toggle_light": False,
     "filter_tested": False,
     "create_issue": False,
+    "subtasks_interactive": False,
+    "comment_interactive": False,
+    "quick_move_interactive": False,
     "antigravity_agent": False
 }
 
@@ -86,18 +89,15 @@ with sync_playwright() as p:
     # Theme Toggle Test
     theme_btn = page.locator("button[data-testid='theme-toggle']")
     if theme_btn.count() > 0:
-        # Toggle to Dark
         theme_btn.click()
         page.wait_for_timeout(300)
         is_dark = page.evaluate("() => document.documentElement.classList.contains('dark')")
         test_summary["theme_toggle_dark"] = is_dark
         
-        # Dark screenshot
         dark_shot = os.path.join(WORKSPACE_DIR, "tests", "reports", "react-dark-desktop-1440.png")
         page.screenshot(path=dark_shot)
         shutil.copyfile(dark_shot, os.path.join(ARTIFACT_DIR, "react-dark-desktop-1440.png"))
         
-        # Toggle back to Light
         theme_btn.click()
         page.wait_for_timeout(300)
         is_light = page.evaluate("() => !document.documentElement.classList.contains('dark')")
@@ -116,12 +116,18 @@ with sync_playwright() as p:
         all_chip.click()
         page.wait_for_timeout(300)
 
+    # Quick move test
+    quick_move_btn = page.locator("article[data-testid='issue-card'] button[title*='Mover a']").first
+    if quick_move_btn.count() > 0:
+        quick_move_btn.click(force=True)
+        page.wait_for_timeout(400)
+        test_summary["quick_move_interactive"] = True
+
     # Create Issue Modal Test
     nuevo_issue_btn = page.locator("header button:has-text('+ Issue')")
     nuevo_issue_btn.click()
     page.wait_for_timeout(400)
     
-    # Fill form
     page.fill("input[placeholder*='Ej: Corregir memory leak']", "E2E Test Issue - Stack React Verificado")
     textarea = page.locator("textarea")
     if textarea.count() > 0:
@@ -131,19 +137,33 @@ with sync_playwright() as p:
     submit_btn.click()
     page.wait_for_timeout(600)
     
-    # Verify card exists
     card_created = page.locator("text='E2E Test Issue - Stack React Verificado'").count() > 0
     test_summary["create_issue"] = card_created
 
-    # Antigravity AI Agent dispatch test
+    # Drawer, Subtasks & Comments Test
     first_card = page.locator("article[data-testid='issue-card']").first
     first_card.click()
     page.wait_for_timeout(600)
-    
+
+    # Subtask toggle test
+    subtask_label = page.locator("aside label:has(input[type='checkbox'])").first
+    if subtask_label.count() > 0:
+        subtask_label.click()
+        page.wait_for_timeout(400)
+        test_summary["subtasks_interactive"] = True
+
+    # Comment submission test
+    comment_input = page.locator("aside input[placeholder*='Escribe un comentario']")
+    if comment_input.count() > 0:
+        comment_input.fill("Playwright E2E Comment Verification")
+        page.locator("aside form button[type='submit']").click()
+        page.wait_for_timeout(500)
+        test_summary["comment_interactive"] = page.locator("text='Playwright E2E Comment Verification'").count() > 0
+
+    # Antigravity AI Agent dispatch test
     ag_btn = page.locator("button:has-text('Resolver con Antigravity')")
     if ag_btn.count() > 0:
         ag_btn.click()
-        # Wait for agent progress
         page.wait_for_timeout(3500)
         test_summary["antigravity_agent"] = True
         
