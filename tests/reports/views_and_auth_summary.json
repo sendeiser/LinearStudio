@@ -1,0 +1,12 @@
+{
+  "views_tested": {
+    "all_issues": true,
+    "sprints": true,
+    "team": true,
+    "pull_requests": true,
+    "copilot": true,
+    "settings": true,
+    "board": true
+  },
+  "auth_signup_login_tested": true
+}

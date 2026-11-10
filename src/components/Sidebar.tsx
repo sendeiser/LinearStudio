@@ -8,13 +8,13 @@ import {
   Plus, 
   Bot, 
   ChevronsUpDown, 
-  LogOut,
-  Sparkles,
-  Cloud,
-  HardDrive,
-  Users
+  LogOut, 
+  Sparkles, 
+  Cloud, 
+  HardDrive, 
+  Users 
 } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useStore, ActiveView } from '../store/useStore';
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -25,8 +25,20 @@ export const Sidebar: React.FC = () => {
     setIsAuthModalOpen,
     activeRepoFullName,
     dataMode,
-    currentUserEmail
+    currentUserEmail,
+    activeView,
+    setActiveView
   } = useStore();
+
+  const navItems = [
+    { id: 'board' as ActiveView, label: 'Tablero Activo', icon: Kanban },
+    { id: 'all_issues' as ActiveView, label: 'Todos los Issues', icon: ListTodo },
+    { id: 'sprints' as ActiveView, label: 'Hitos & Sprints', icon: Flag },
+    { id: 'team' as ActiveView, label: 'Equipo & Workspaces', icon: Users },
+    { id: 'pull_requests' as ActiveView, label: 'Pull Requests', icon: GitPullRequest, badge: 3 },
+    { id: 'copilot' as ActiveView, label: 'Antigravity Copilot', icon: Bot, badge: 'AI', isAi: true },
+    { id: 'settings' as ActiveView, label: 'Configuración & Auth', icon: Settings }
+  ];
 
   return (
     <>
@@ -63,7 +75,7 @@ export const Sidebar: React.FC = () => {
                   {dataMode === 'cloud' ? (
                     <>
                       <Cloud className="w-2.5 h-2.5 text-brand" />
-                      <span className="text-brand font-semibold">Supabase (boxtools)</span>
+                      <span className="text-brand font-semibold">boxtools Cloud</span>
                     </>
                   ) : (
                     <>
@@ -92,44 +104,42 @@ export const Sidebar: React.FC = () => {
             <span className="text-[10px] font-bold text-text-secondary dark:text-dark-text-muted px-2.5 py-1 uppercase tracking-wider">
               Vistas
             </span>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand/10 dark:bg-dark-brand/20 text-brand dark:text-dark-brand font-semibold">
-              <Kanban className="w-4 h-4" />
-              <span className="flex-1">Tablero Activo</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
-              <ListTodo className="w-4 h-4" />
-              <span className="flex-1">Todos los Issues</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
-              <Flag className="w-4 h-4" />
-              <span className="flex-1">Hitos & Sprints</span>
-            </a>
-            <a 
-              onClick={(e) => { e.preventDefault(); setIsWorkspaceModalOpen(true); }}
-              href="#" 
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors"
-            >
-              <Users className="w-4 h-4" />
-              <span className="flex-1">Equipo & Workspaces</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
-              <GitPullRequest className="w-4 h-4" />
-              <span className="flex-1">Pull Requests</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border text-done font-bold">3</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 font-semibold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors">
-              <Bot className="w-4 h-4" />
-              <span className="flex-1">Antigravity Copilot</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200">AI</span>
-            </a>
-            <a 
-              onClick={(e) => { e.preventDefault(); setIsAuthModalOpen(true); }}
-              href="#" 
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="flex-1">Configuración & Auth</span>
-            </a>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveView(item.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${
+                    isActive
+                      ? item.isAi
+                        ? 'bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-200 font-bold border border-purple-300 dark:border-purple-800 shadow-sm'
+                        : 'bg-brand/10 dark:bg-dark-brand/20 text-brand dark:text-dark-brand font-bold shadow-sm'
+                      : item.isAi
+                      ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30'
+                      : 'text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.badge && (
+                    <span
+                      className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                        item.isAi
+                          ? 'bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200'
+                          : 'bg-surface dark:bg-dark-surface border border-border-subtle text-done'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
@@ -152,10 +162,10 @@ export const Sidebar: React.FC = () => {
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-bold text-text-primary dark:text-dark-text truncate">
-                {currentUserEmail || 'TinChoX (Local)'}
+                {currentUserEmail || 'Martin Tincho'}
               </span>
               <span className="text-[10px] text-text-secondary dark:text-dark-text-muted truncate">
-                {currentUserEmail ? 'Supabase Conectado' : 'Clic para conectar Supabase'}
+                {currentUserEmail ? 'Supabase Conectado' : 'Modo Local (Clic para Auth)'}
               </span>
             </div>
             <button className="text-text-muted group-hover:text-text-primary" title="Gestionar cuenta">

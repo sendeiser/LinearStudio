@@ -2,9 +2,13 @@ import { create } from 'zustand';
 import { ColumnId, Issue } from '../types/issue';
 import { antigravityService, AntigravityProgressState } from '../services/antigravityService';
 
+export type ActiveView = 'board' | 'all_issues' | 'sprints' | 'team' | 'pull_requests' | 'copilot' | 'settings';
+
 interface AppState {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  activeView: ActiveView;
+  setActiveView: (view: ActiveView) => void;
   selectedIssue: Issue | null;
   setSelectedIssue: (issue: Issue | null) => void;
   isCreateModalOpen: boolean;
@@ -49,6 +53,8 @@ export const useStore = create<AppState>((set) => ({
       return { theme: next };
     });
   },
+  activeView: 'board',
+  setActiveView: (view) => set({ activeView: view }),
   selectedIssue: null,
   setSelectedIssue: (issue) => set({ selectedIssue: issue }),
   isCreateModalOpen: false,

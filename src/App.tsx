@@ -9,6 +9,12 @@ import { IssueDetailDrawer } from './components/IssueDetailDrawer';
 import { CreateIssueModal } from './components/CreateIssueModal';
 import { AuthModal } from './components/AuthModal';
 import { WorkspaceModal } from './components/WorkspaceModal';
+import { AllIssuesView } from './components/views/AllIssuesView';
+import { SprintsView } from './components/views/SprintsView';
+import { TeamWorkspaceView } from './components/views/TeamWorkspaceView';
+import { PullRequestsView } from './components/views/PullRequestsView';
+import { AntigravityCopilotView } from './components/views/AntigravityCopilotView';
+import { SettingsView } from './components/views/SettingsView';
 import { useStore } from './store/useStore';
 import { ColumnId } from './types/issue';
 import { supabase } from './lib/supabase';
@@ -19,6 +25,7 @@ export const App: React.FC = () => {
   const queryClient = useQueryClient();
   const { 
     theme, 
+    activeView,
     isCreateModalOpen, 
     setIsCreateModalOpen, 
     selectedIssue, 
@@ -109,6 +116,66 @@ export const App: React.FC = () => {
     done: issues.filter((i) => i.status === 'done').length
   };
 
+  const renderActiveView = () => {
+    switch (activeView) {
+      case 'board':
+        return (
+          <>
+            <MobileColTabs counts={counts} />
+            <FilterBar />
+            <div className="flex-1 flex overflow-hidden relative">
+              <KanbanBoard issues={issues} />
+              <IssueDetailDrawer />
+            </div>
+          </>
+        );
+      case 'all_issues':
+        return (
+          <div className="flex-1 flex overflow-hidden relative">
+            <AllIssuesView issues={issues} />
+            <IssueDetailDrawer />
+          </div>
+        );
+      case 'sprints':
+        return (
+          <div className="flex-1 flex overflow-hidden relative">
+            <SprintsView issues={issues} />
+            <IssueDetailDrawer />
+          </div>
+        );
+      case 'team':
+        return (
+          <div className="flex-1 flex overflow-hidden relative">
+            <TeamWorkspaceView />
+            <IssueDetailDrawer />
+          </div>
+        );
+      case 'pull_requests':
+        return (
+          <div className="flex-1 flex overflow-hidden relative">
+            <PullRequestsView />
+            <IssueDetailDrawer />
+          </div>
+        );
+      case 'copilot':
+        return (
+          <div className="flex-1 flex overflow-hidden relative">
+            <AntigravityCopilotView />
+            <IssueDetailDrawer />
+          </div>
+        );
+      case 'settings':
+        return (
+          <div className="flex-1 flex overflow-hidden relative">
+            <SettingsView />
+            <IssueDetailDrawer />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-canvas dark:bg-dark-canvas text-text-primary dark:text-dark-text antialiased">
       {/* Primary Sidebar */}
@@ -117,14 +184,7 @@ export const App: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
         <Topbar />
-        <MobileColTabs counts={counts} />
-        <FilterBar />
-
-        {/* Board and Drawer Workspace */}
-        <div className="flex-1 flex overflow-hidden relative">
-          <KanbanBoard issues={issues} />
-          <IssueDetailDrawer />
-        </div>
+        {renderActiveView()}
       </div>
 
       {/* Modals */}
