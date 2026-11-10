@@ -1,6 +1,29 @@
-.worktrees/
+# Dependencies
 node_modules/
-dist/
-.env
-.env.local
+.pnp
+.pnp.js
 
+# Build Output
+dist/
+build/
+
+# Worktrees & Temporary Branches
+.worktrees/
+worktrees/
+
+# Environment Variables & Secrets (ECC AgentShield Protected)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs & Diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+playwright-report/
+test-results/

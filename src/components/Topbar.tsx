@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Menu, Search, Sun, Moon, RefreshCw, Plus } from 'lucide-react';
+import { Menu, Search, Sun, Moon, RefreshCw, Plus, Cloud, HardDrive } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export const Topbar: React.FC = () => {
@@ -8,8 +8,12 @@ export const Topbar: React.FC = () => {
     toggleTheme, 
     setIsMobileMenuOpen, 
     setIsCreateModalOpen,
+    setIsAuthModalOpen,
+    setIsWorkspaceModalOpen,
     searchQuery,
-    setSearchQuery 
+    setSearchQuery,
+    activeRepoFullName,
+    dataMode
   } = useStore();
   const [isSyncing, setIsSyncing] = React.useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -43,12 +47,35 @@ export const Topbar: React.FC = () => {
         </button>
 
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-bold text-xs md:text-sm text-text-primary dark:text-dark-text truncate">
-            tincho / hyper-flow
-          </span>
+          <button
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            className="font-bold text-xs md:text-sm text-text-primary dark:text-dark-text hover:text-brand dark:hover:text-dark-brand truncate transition-colors text-left"
+            title="Cambiar repositorio o workspace"
+          >
+            {activeRepoFullName}
+          </button>
           <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border text-text-secondary dark:text-dark-text-muted">
             main
           </span>
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className={`hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono border transition-colors ${
+              dataMode === 'cloud'
+                ? 'bg-blue-50 dark:bg-blue-950/40 text-brand dark:text-dark-brand border-blue-200 dark:border-blue-800'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+            }`}
+            title="Clic para cambiar entre Modo Local y Supabase Cloud"
+          >
+            {dataMode === 'cloud' ? (
+              <>
+                <Cloud className="w-3 h-3 text-brand" /> boxtools Cloud
+              </>
+            ) : (
+              <>
+                <HardDrive className="w-3 h-3 text-emerald-500" /> Modo Local
+              </>
+            )}
+          </button>
         </div>
 
         {/* Search Bar */}

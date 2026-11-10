@@ -1,0 +1,21 @@
+# Linear Studio & Antigravity AI — ECC AgentShield Rules & Project Knowledge
+
+## 1. Base de Datos Compartida (Supabase Cloud — boxtools)
+- Linear Studio comparte el proyecto de Supabase Cloud con `boxtools` (Project Ref: `ydoviusjpgmjsxpspexu`).
+- **Regla de Oro:** Todas las tablas, índices, enums y funciones creadas para Linear Studio DEBEN llevar el prefijo `ls_` (ej: `ls_workspaces`, `ls_linked_repositories`, `ls_issues`, `ls_subtasks`, `ls_comments`, `ls_user_role`).
+- Queda terminantemente prohibido modificar, renombrar o aplicar drops a las tablas nativas de `boxtools` (`categories`, `tools`, `combos`, `ai_settings`, `tool_media`).
+
+## 2. Seguridad y Row Level Security (RLS)
+- En una base de datos compartida, un usuario autenticado en otro módulo de la plataforma no debe tener acceso automático a los datos de Linear Studio.
+- Todas las tablas `ls_*` deben tener RLS habilitado.
+- Cada política de lectura o mutación debe validar la membresía del usuario en el workspace correspondiente a través de las funciones SECURITY DEFINER `ls_can_access_repo(repository_id, write_flag)` o `ls_can_access_issue(issue_id, write_flag)`.
+
+## 3. Manejo de Secretos y Credenciales (AgentShield)
+- Ningún token de acceso personal de Supabase (`sbp_...`) ni clave de servicio debe quedar grabado en archivos seguidos por git ni en el historial de commits.
+- Las variables de entorno locales deben residir exclusivamente en `.env.local` (cubierto por `.gitignore`).
+- La aplicación cliente solo consume variables públicas con prefijo `VITE_` (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`).
+
+## 4. Patrón Repositorio y Resiliencia Offline-First
+- La interfaz de usuario debe interactuar con el contrato `IssueRepository`, permaneciendo agnóstica de si los datos provienen de Supabase o del almacenamiento local.
+- `LocalIssueRepository`: opera sobre `localStorage` y memoria, permitiendo que la aplicación funcione al 100% en modo demo/offline sin bloquear al usuario.
+- `SupabaseIssueRepository`: sincroniza en vivo con Supabase Cloud cuando el usuario inicia sesión y selecciona un workspace.

@@ -1,4 +1,4 @@
-﻿-- =============================================================================
+-- =============================================================================
 -- MIGRATION: Linear Studio (GitHub Projects + Antigravity AI)
 -- Version: 1.3.0
 -- Base de datos COMPARTIDA con boxtools (proyecto ydoviusjpgmjsxpspexu).

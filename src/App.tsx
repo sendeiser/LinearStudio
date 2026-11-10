@@ -7,13 +7,27 @@ import { MobileColTabs } from './components/MobileColTabs';
 import { KanbanBoard } from './components/KanbanBoard';
 import { IssueDetailDrawer } from './components/IssueDetailDrawer';
 import { CreateIssueModal } from './components/CreateIssueModal';
+import { AuthModal } from './components/AuthModal';
+import { WorkspaceModal } from './components/WorkspaceModal';
 import { useStore } from './store/useStore';
-import { dataService } from './services/dataService';
 import { ColumnId } from './types/issue';
+import { supabase } from './lib/supabase';
+import { workspaceService } from './services/workspaceService';
+import { IssueRepository, LocalIssueRepository, SupabaseIssueRepository } from './services/issueRepository';
 
 export const App: React.FC = () => {
   const queryClient = useQueryClient();
-  const { theme, isCreateModalOpen, setIsCreateModalOpen, selectedIssue, setSelectedIssue } = useStore();
+  const { 
+    theme, 
+    isCreateModalOpen, 
+    setIsCreateModalOpen, 
+    selectedIssue, 
+    setSelectedIssue,
+    dataMode,
+    activeRepoId,
+    currentUserEmail,
+    setCurrentUserEmail
+  } = useStore();
 
   // Sync theme class on <html> on mount & theme change
   useEffect(() => {
@@ -23,6 +37,24 @@ export const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  // Auth session bootstrap & listener
+  useEffect(() => {
+    workspaceService.getCurrentUser().then((user) => {
+      if (user?.email) {
+        setCurrentUserEmail(user.email);
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserEmail(session?.user?.email || null);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, [setCurrentUserEmail, queryClient]);
 
   // Global keyboard shortcuts (C to create issue, Esc to close modal/drawer)
   useEffect(() => {
@@ -51,10 +83,21 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCreateModalOpen, selectedIssue, setIsCreateModalOpen, setSelectedIssue]);
 
+  // Issue repository selection
+  const getRepository = (): IssueRepository => {
+    if (dataMode === 'cloud' && activeRepoId && currentUserEmail) {
+      return new SupabaseIssueRepository(supabase, activeRepoId, {
+        name: currentUserEmail.split('@')[0],
+        role: 'developer'
+      });
+    }
+    return new LocalIssueRepository();
+  };
+
   // Fetch issues via TanStack React Query
   const { data: issues = [] } = useQuery({
-    queryKey: ['issues'],
-    queryFn: () => dataService.getIssues()
+    queryKey: ['issues', dataMode, activeRepoId, currentUserEmail],
+    queryFn: () => getRepository().list()
   });
 
   // Calculate counts per column for mobile tabs
@@ -84,15 +127,16 @@ export const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Create Issue Modal */}
+      {/* Modals */}
       <CreateIssueModal
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ['issues'] });
         }}
       />
+      <AuthModal />
+      <WorkspaceModal />
     </div>
   );
 };
 
 export default App;
-

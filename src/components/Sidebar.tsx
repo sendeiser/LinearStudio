@@ -9,12 +9,24 @@ import {
   Bot, 
   ChevronsUpDown, 
   LogOut,
-  Sparkles
+  Sparkles,
+  Cloud,
+  HardDrive,
+  Users
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export const Sidebar: React.FC = () => {
-  const { isMobileMenuOpen, setIsMobileMenuOpen, setIsCreateModalOpen } = useStore();
+  const { 
+    isMobileMenuOpen, 
+    setIsMobileMenuOpen, 
+    setIsCreateModalOpen,
+    setIsWorkspaceModalOpen,
+    setIsAuthModalOpen,
+    activeRepoFullName,
+    dataMode,
+    currentUserEmail
+  } = useStore();
 
   return (
     <>
@@ -34,15 +46,31 @@ export const Sidebar: React.FC = () => {
       >
         <div className="flex flex-col gap-3.5">
           {/* Workspace & Repo Header */}
-          <div className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border hover:border-brand/40 transition-colors cursor-pointer group">
+          <div 
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border hover:border-brand/40 transition-colors cursor-pointer group"
+            title="Cambiar o crear Workspace en Supabase"
+          >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-md bg-brand dark:bg-dark-brand text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
-                H
+                {activeRepoFullName.charAt(0).toUpperCase()}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-xs text-text-primary dark:text-dark-text truncate">tincho/hyper-flow</span>
+                <span className="font-bold text-xs text-text-primary dark:text-dark-text truncate">
+                  {activeRepoFullName}
+                </span>
                 <span className="font-mono text-[10px] text-text-secondary dark:text-dark-text-muted flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> GitHub Synced
+                  {dataMode === 'cloud' ? (
+                    <>
+                      <Cloud className="w-2.5 h-2.5 text-brand" />
+                      <span className="text-brand font-semibold">Supabase (boxtools)</span>
+                    </>
+                  ) : (
+                    <>
+                      <HardDrive className="w-2.5 h-2.5 text-emerald-500" />
+                      <span>Modo Local</span>
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -59,21 +87,30 @@ export const Sidebar: React.FC = () => {
             <kbd className="ml-auto font-mono text-[10px] bg-white/20 px-1 rounded text-white font-medium">C</kbd>
           </button>
 
-          {/* Nav Links */}
-          <nav className="flex flex-col gap-1 text-xs font-medium">
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand-subtle dark:bg-dark-brand/20 text-brand dark:text-dark-brand font-semibold border-l-2 border-brand dark:border-dark-brand">
+          {/* Main Views Navigation */}
+          <nav className="flex flex-col gap-0.5 text-xs font-medium">
+            <span className="text-[10px] font-bold text-text-secondary dark:text-dark-text-muted px-2.5 py-1 uppercase tracking-wider">
+              Vistas
+            </span>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand/10 dark:bg-dark-brand/20 text-brand dark:text-dark-brand font-semibold">
               <Kanban className="w-4 h-4" />
-              <span className="flex-1">Tablero Kanban</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border text-text-secondary dark:text-dark-text-muted">42</span>
+              <span className="flex-1">Tablero Activo</span>
             </a>
             <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
               <ListTodo className="w-4 h-4" />
-              <span className="flex-1">Lista de Issues</span>
+              <span className="flex-1">Todos los Issues</span>
             </a>
             <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
               <Flag className="w-4 h-4" />
-              <span className="flex-1">Hitos (Milestones)</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border text-brand dark:text-dark-brand font-semibold">v2.4</span>
+              <span className="flex-1">Hitos & Sprints</span>
+            </a>
+            <a 
+              onClick={(e) => { e.preventDefault(); setIsWorkspaceModalOpen(true); }}
+              href="#" 
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              <span className="flex-1">Equipo & Workspaces</span>
             </a>
             <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
               <GitPullRequest className="w-4 h-4" />
@@ -85,9 +122,13 @@ export const Sidebar: React.FC = () => {
               <span className="flex-1">Antigravity Copilot</span>
               <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200">AI</span>
             </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors">
+            <a 
+              onClick={(e) => { e.preventDefault(); setIsAuthModalOpen(true); }}
+              href="#" 
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated transition-colors"
+            >
               <Settings className="w-4 h-4" />
-              <span className="flex-1">Configuración</span>
+              <span className="flex-1">Configuración & Auth</span>
             </a>
           </nav>
         </div>
@@ -100,15 +141,24 @@ export const Sidebar: React.FC = () => {
             </span>
             <kbd className="font-mono text-[10px] bg-surface-subtle dark:bg-dark-surface-elevated px-1 py-0.5 rounded border border-border-subtle dark:border-dark-border">⌘K</kbd>
           </div>
-          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border">
+          
+          {/* User Account Tile */}
+          <div 
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border hover:border-brand/40 transition-colors cursor-pointer group"
+          >
             <div className="w-7 h-7 rounded-full bg-brand/10 dark:bg-dark-brand/20 border border-brand/30 text-brand dark:text-dark-brand flex items-center justify-center font-bold text-xs">
-              TC
+              {currentUserEmail ? currentUserEmail.slice(0, 2).toUpperCase() : 'TC'}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-bold text-text-primary dark:text-dark-text truncate">TinChoX</span>
-              <span className="text-[10px] text-text-secondary dark:text-dark-text-muted truncate">Owner & Maintainer</span>
+              <span className="text-xs font-bold text-text-primary dark:text-dark-text truncate">
+                {currentUserEmail || 'TinChoX (Local)'}
+              </span>
+              <span className="text-[10px] text-text-secondary dark:text-dark-text-muted truncate">
+                {currentUserEmail ? 'Supabase Conectado' : 'Clic para conectar Supabase'}
+              </span>
             </div>
-            <button className="text-text-muted hover:text-text-primary" title="Cerrar sesión">
+            <button className="text-text-muted group-hover:text-text-primary" title="Gestionar cuenta">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -117,4 +167,3 @@ export const Sidebar: React.FC = () => {
     </>
   );
 };
-
