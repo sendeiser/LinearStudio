@@ -35,3 +35,4 @@ CREATE POLICY ls_issues_write ON public.ls_issues
   WITH CHECK (public.ls_can_access_repo(repository_id, true));
 
 -- ==============================================================================
+

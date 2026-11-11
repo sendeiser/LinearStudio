@@ -6,10 +6,6 @@ import {
   Flag, 
   Tag, 
   GitBranch, 
-  Sparkles, 
-  Play, 
-  Brain, 
-  CheckCircle, 
   Loader2,
   Send,
   MessageSquare,
@@ -33,8 +29,6 @@ export const IssueDetailDrawer: React.FC = () => {
   const { 
     selectedIssue, 
     setSelectedIssue, 
-    antigravityState, 
-    dispatchAntigravity,
     currentUserEmail,
     userRole,
     activeRepoId,
@@ -396,79 +390,6 @@ export const IssueDetailDrawer: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Antigravity AI Agent Section */}
-      <div className="p-3.5 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border-b border-purple-200 dark:border-purple-900/50 flex flex-col gap-2 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            <span className="font-bold text-xs text-purple-900 dark:text-purple-200">
-              Antigravity Coding Agent
-            </span>
-          </div>
-          <span className="font-mono text-[10px] text-purple-600 dark:text-purple-400 font-semibold px-2 py-0.5 bg-purple-100 dark:bg-purple-900/60 rounded-full">
-            v1.5.0
-          </span>
-        </div>
-        <p className="text-[11px] text-text-secondary dark:text-dark-text-muted leading-tight">
-          Delega este issue para que un agente Antigravity cree el branch, ejecute TDD con Playwright y genere el Pull Request automáticamente.
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 pt-1">
-          <button
-            disabled={antigravityState.isRunning}
-            onClick={() => dispatchAntigravity(selectedIssue)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 active:scale-98 transition-all disabled:opacity-75"
-          >
-            {antigravityState.isRunning ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Despachando a Antigravity...</span>
-              </>
-            ) : antigravityState.prReady ? (
-              <>
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-                <span>PR #{selectedIssue.id + 1} Generado</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>✦ Resolver con Antigravity</span>
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => alert(`✦ Auto-triage Antigravity:\n- Prioridad: ${selectedIssue.priority.toUpperCase()}\n- Complejidad: 3 SP\n- Impacto: Producción`)}
-            className="py-1.5 px-2.5 rounded-lg border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-xs font-semibold transition-colors"
-            title="Auto-triage con IA"
-          >
-            <Brain className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Live Telemetry Progress Card */}
-        {antigravityState.isRunning && (
-          <div className="p-2.5 rounded-lg bg-purple-950/20 dark:bg-purple-950/60 border border-purple-500/30 flex flex-col gap-1.5 text-[11px] animate-in fade-in duration-150">
-            <div className="flex items-center justify-between text-purple-300 font-mono">
-              <span className="flex items-center gap-1.5 font-bold">
-                <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-                Agente en Ejecución...
-              </span>
-              <span>{antigravityState.step}</span>
-            </div>
-            <div className="w-full bg-purple-900/40 rounded-full h-1.5 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-purple-400 to-emerald-400 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${antigravityState.progress}%` }}
-              />
-            </div>
-            <code className="font-mono text-[10px] text-purple-200/90 bg-black/40 p-1.5 rounded truncate">
-              {antigravityState.log}
-            </code>
-          </div>
-        )}
-      </div>
 
       {/* Drawer Body: Modo Edición vs Modo Vista */}
       {isEditing ? (

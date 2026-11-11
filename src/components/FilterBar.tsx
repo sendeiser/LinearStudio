@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, Sparkles } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export const FilterBar: React.FC = () => {
@@ -36,11 +36,6 @@ export const FilterBar: React.FC = () => {
             </button>
           );
         })}
-      </div>
-
-      {/* Antigravity AI Pill */}
-      <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/50 border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-mono text-[11px] font-semibold">
-        <Sparkles className="w-3 h-3 text-purple-500 animate-pulse" /> Antigravity AI Listo
       </div>
     </div>
   );

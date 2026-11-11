@@ -27,8 +27,12 @@ export const Sidebar: React.FC = () => {
     currentUserEmail,
     setCurrentUserEmail,
     activeView,
-    setActiveView
+    setActiveView,
+    setSelectedIssue,
+    pullRequests
   } = useStore();
+
+  const openPrsCount = (pullRequests || []).filter((p) => p.status === 'open').length;
 
   const navItems = [
     { id: 'board' as ActiveView, label: 'Tablero Activo', icon: Kanban },
@@ -36,7 +40,12 @@ export const Sidebar: React.FC = () => {
     { id: 'projects_triage' as ActiveView, label: 'Proyectos & Triage Global', icon: Layers, badge: 'MULTI' },
     { id: 'sprints' as ActiveView, label: 'Hitos & Sprints', icon: Flag },
     { id: 'team' as ActiveView, label: 'Equipo & Workspaces', icon: Users },
-    { id: 'pull_requests' as ActiveView, label: 'Pull Requests', icon: GitPullRequest, badge: 3 },
+    { 
+      id: 'pull_requests' as ActiveView, 
+      label: 'Pull Requests', 
+      icon: GitPullRequest, 
+      badge: openPrsCount > 0 ? openPrsCount : (pullRequests.length > 0 ? pullRequests.length : undefined) 
+    },
     { id: 'settings' as ActiveView, label: 'Configuración & Auth', icon: Settings }
   ];
 
@@ -103,6 +112,7 @@ export const Sidebar: React.FC = () => {
                   key={item.id}
                   onClick={() => {
                     setActiveView(item.id);
+                    setSelectedIssue(null);
                     setIsMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${

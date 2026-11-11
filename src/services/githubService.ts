@@ -1,4 +1,5 @@
 import { Issue, Priority } from '../types/issue';
+import { PullRequest } from '../types/pullRequest';
 import { supabase } from '../lib/supabase';
 import { workspaceService } from './workspaceService';
 import { dataService } from './dataService';
@@ -229,6 +230,13 @@ class GitHubService {
       }))
     );
 
+    // 4. Sincronizar Pull Requests de GitHub en tiempo real
+    try {
+      await this.syncPullRequests(fullRepo, tok);
+    } catch (prErr) {
+      console.warn('Notice al sincronizar Pull Requests de GitHub:', prErr);
+    }
+
     return {
       repositoryId: repoId || '',
       repoFullName: fullRepo,
@@ -236,6 +244,76 @@ class GitHubService {
       openCount,
       closedCount
     };
+  }
+
+  public async fetchRepoPullRequests(fullRepo: string, token?: string): Promise<PullRequest[]> {
+    const { owner, name } = this.parseRepo(fullRepo);
+    const tok = token || this.getToken();
+
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'LinearStudio-Client'
+    };
+    if (tok) {
+      headers['Authorization'] = `Bearer ${tok}`;
+    }
+
+    const url = `https://api.github.com/repos/${owner}/${name}/pulls?state=all&per_page=50`;
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`Repositorio '${fullRepo}' no encontrado en GitHub (404).`);
+        return [];
+      }
+      throw new Error(`No se pudieron obtener los Pull Requests de GitHub (${response.status}): ${response.statusText}`);
+    }
+
+    const rawList: any[] = await response.json();
+    return rawList.map((pr) => {
+      const isMerged = Boolean(pr.merged_at);
+      let status: 'open' | 'merged' | 'closed' | 'draft' = 'open';
+      if (isMerged) status = 'merged';
+      else if (pr.draft) status = 'draft';
+      else if (pr.state === 'closed') status = 'closed';
+      else status = 'open';
+
+      const login = pr.user?.login || 'Colaborador';
+      const isAi = Boolean(login.toLowerCase().includes('bot') || login.toLowerCase().includes('antigravity'));
+
+      let createdAt = pr.created_at;
+      try {
+        const d = new Date(pr.created_at);
+        createdAt = d.toLocaleDateString();
+      } catch {}
+
+      return {
+        number: pr.number,
+        title: pr.title,
+        body: pr.body || '',
+        author: {
+          name: login,
+          avatar: pr.user?.avatar_url || login.slice(0, 2).toUpperCase(),
+          isAi
+        },
+        branch: pr.head?.ref || 'feature-branch',
+        baseBranch: pr.base?.ref || 'main',
+        status,
+        ciStatus: 'passing',
+        additions: pr.additions || 0,
+        deletions: pr.deletions || 0,
+        commitsCount: pr.commits || 1,
+        commentsCount: pr.comments || 0,
+        createdAt,
+        htmlUrl: pr.html_url
+      };
+    });
+  }
+
+  public async syncPullRequests(fullRepo: string, token?: string): Promise<PullRequest[]> {
+    const prs = await this.fetchRepoPullRequests(fullRepo, token);
+    useStore.getState().setPullRequests(prs);
+    return prs;
   }
 
   public async fetchRepoIssues(fullRepo: string, token?: string): Promise<Issue[]> {

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Plus, 
-  Sparkles, 
   ArrowUpDown, 
   CheckCircle2, 
   Clock, 
@@ -23,7 +22,6 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
   const { 
     setSelectedIssue, 
     setIsCreateModalOpen, 
-    dispatchAntigravity,
     searchQuery,
     activeFilter,
     currentUserEmail,
@@ -258,18 +256,6 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
                           title="Eliminar issue (CRUD)"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIssue(issue);
-                            dispatchAntigravity(issue);
-                          }}
-                          className="py-1 px-2.5 rounded-md bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-[11px] inline-flex items-center gap-1 transition-colors"
-                          title="Resolver con Antigravity AI Agent"
-                        >
-                          <Sparkles className="w-3 h-3 text-purple-500" />
-                          <span>Resolver</span>
                         </button>
                       </div>
                     </td>

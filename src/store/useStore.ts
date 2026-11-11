@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ColumnId, Issue } from '../types/issue';
+import { PullRequest } from '../types/pullRequest';
 import { antigravityService, AntigravityProgressState } from '../services/antigravityService';
 
 export type ActiveView = 'board' | 'all_issues' | 'sprints' | 'team' | 'pull_requests' | 'projects_triage' | 'settings';
@@ -39,6 +40,8 @@ interface AppState {
   setGithubToken: (token: string | null) => void;
   githubUser: { login: string; avatar_url: string; name?: string | null; public_repos?: number } | null;
   setGithubUser: (user: { login: string; avatar_url: string; name?: string | null; public_repos?: number } | null) => void;
+  pullRequests: PullRequest[];
+  setPullRequests: (prs: PullRequest[]) => void;
   antigravityState: AntigravityProgressState;
   dispatchAntigravity: (issue: Issue) => void;
 }
@@ -91,6 +94,8 @@ export const useStore = create<AppState>((set) => ({
   setGithubToken: (token) => set({ githubToken: token }),
   githubUser: null,
   setGithubUser: (user) => set({ githubUser: user }),
+  pullRequests: [],
+  setPullRequests: (prs) => set({ pullRequests: prs }),
   antigravityState: {
     isRunning: false,
     step: 'Idle',
