@@ -18,12 +18,17 @@ import {
   RefreshCw,
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  FolderGit2,
+  GitPullRequest,
+  Search,
+  Globe,
+  Star,
+  ArrowRight
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { workspaceService } from '../../services/workspaceService';
-import { githubService } from '../../services/githubService';
-import { dataService } from '../../services/dataService';
+import { githubService, GitHubRepositoryItem, GitHubSyncResult } from '../../services/githubService';
 import { useQueryClient } from '@tanstack/react-query';
 
 export const SettingsView: React.FC = () => {
@@ -35,6 +40,8 @@ export const SettingsView: React.FC = () => {
     setCurrentUserEmail,
     activeRepoFullName,
     setActiveRepoFullName,
+    setActiveRepoId,
+    setActiveView,
     githubToken,
     setGithubToken,
     githubUser,
@@ -52,14 +59,47 @@ export const SettingsView: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Validate GitHub Token on mount if token is stored
+  // Repositorios de la cuenta de GitHub
+  const [userRepos, setUserRepos] = useState<GitHubRepositoryItem[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [repoSearch, setRepoSearch] = useState('');
+  const [syncStats, setSyncStats] = useState<GitHubSyncResult | null>(null);
+  const [isManualInput, setIsManualInput] = useState(false);
+
+  // Carga de repositorios desde la API de GitHub
+  const loadUserRepos = async (token?: string) => {
+    const tok = token || githubToken;
+    if (!tok) return;
+    setLoadingRepos(true);
+    try {
+      const repos = await githubService.getUserRepositories(tok);
+      setUserRepos(repos);
+      // Sugerir prioritariamente LinearStudio si está presente, o el primero de la lista
+      if (repos.length > 0 && (!repoInput || repoInput === 'tincho/hyper-flow')) {
+        const preferred = repos.find(r => r.full_name.toLowerCase().includes('linearstudio')) || repos[0];
+        setRepoInput(preferred.full_name);
+        setActiveRepoFullName(preferred.full_name);
+      }
+    } catch (err: any) {
+      console.warn('Error al cargar repositorios de GitHub:', err);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
+
+  // Validar y cargar repositorios en mount si el token ya está almacenado
   useEffect(() => {
     if (githubToken && !githubUser) {
       githubService.validateToken(githubToken)
-        .then((user) => setGithubUser(user))
+        .then((user) => {
+          setGithubUser(user);
+          loadUserRepos(githubToken);
+        })
         .catch(() => setGithubUser(null));
+    } else if (githubToken && githubUser && userRepos.length === 0) {
+      loadUserRepos(githubToken);
     }
-  }, [githubToken]);
+  }, [githubToken, githubUser]);
 
   const handleConnectGithub = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +110,7 @@ export const SettingsView: React.FC = () => {
 
     setValidatingGh(true);
     setFeedback(null);
+    setSyncStats(null);
 
     try {
       const user = await githubService.validateToken(githubTokenInput.trim());
@@ -79,6 +120,7 @@ export const SettingsView: React.FC = () => {
         type: 'success', 
         text: `✓ ¡GitHub vinculado con éxito como @${user.login} (${user.name || 'Usuario'})!` 
       });
+      await loadUserRepos(githubTokenInput.trim());
     } catch (err: any) {
       setFeedback({ 
         type: 'error', 
@@ -92,38 +134,42 @@ export const SettingsView: React.FC = () => {
   const handleDisconnectGithub = () => {
     setGithubToken(null);
     setGithubUser(null);
+    setUserRepos([]);
+    setSyncStats(null);
     setGithubTokenInput('');
     githubService.setToken('');
     setFeedback({ type: 'success', text: 'Token de GitHub desconectado.' });
   };
 
-  const handleSyncGithubIssues = async () => {
-    if (!repoInput.includes('/')) {
-      setFeedback({ type: 'error', text: 'Especifica un repositorio válido (owner/repo) para sincronizar.' });
+  const handleSyncGithubIssues = async (repoToSyncOverride?: string) => {
+    const targetRepo = (repoToSyncOverride || repoInput).trim();
+    if (!targetRepo.includes('/')) {
+      setFeedback({ type: 'error', text: 'Especifica o selecciona un repositorio válido (owner/repo) para sincronizar.' });
       return;
     }
 
     setSyncingGh(true);
     setFeedback(null);
+    setSyncStats(null);
 
     try {
-      const remoteIssues = await githubService.fetchRepoIssues(repoInput.trim(), githubToken || undefined);
-      if (remoteIssues.length === 0) {
-        setFeedback({ type: 'success', text: `Sincronización completada: no hay issues abiertos en ${repoInput}.` });
-      } else {
-        for (const r of remoteIssues) {
-          dataService.createIssue({
-            title: r.title,
-            description: r.description,
-            priority: r.priority,
-            status: r.status,
-            projectName: repoInput.trim()
-          });
-        }
-        queryClient.invalidateQueries({ queryKey: ['issues'] });
+      const result = await githubService.syncRepoIssuesToSupabase(targetRepo, githubToken || undefined);
+      setSyncStats(result);
+      setActiveRepoFullName(result.repoFullName);
+      if (result.repositoryId) {
+        setActiveRepoId(result.repositoryId);
+      }
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+
+      if (result.syncedCount === 0) {
         setFeedback({ 
           type: 'success', 
-          text: `✓ ¡${remoteIssues.length} issues sincronizados exitosamente desde GitHub (${repoInput})!` 
+          text: `✓ Sincronización finalizada: el repositorio ${result.repoFullName} no tiene issues en GitHub.` 
+        });
+      } else {
+        setFeedback({ 
+          type: 'success', 
+          text: `✓ ¡${result.syncedCount} issues sincronizados exitosamente desde GitHub (${result.repoFullName}) a Supabase Cloud (${result.openCount} abiertos, ${result.closedCount} completados)!` 
         });
       }
     } catch (err: any) {
@@ -167,15 +213,23 @@ export const SettingsView: React.FC = () => {
     setFeedback({ type: 'success', text: 'Sesión cerrada en Supabase Cloud.' });
   };
 
-  const handleSaveRepo = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveRepo = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!repoInput.includes('/')) {
       setFeedback({ type: 'error', text: 'El formato de repositorio debe ser: usuario/repositorio' });
       return;
     }
     setActiveRepoFullName(repoInput.trim());
-    setFeedback({ type: 'success', text: `Repositorio actualizado a ${repoInput.trim()}` });
+    setFeedback({ type: 'success', text: `Repositorio activo configurado en ${repoInput.trim()}` });
   };
+
+  // Filtrado de repositorios en el selector
+  const filteredRepos = userRepos.filter((r) => 
+    r.full_name.toLowerCase().includes(repoSearch.toLowerCase()) ||
+    (r.description && r.description.toLowerCase().includes(repoSearch.toLowerCase()))
+  );
+
+  const selectedRepoMeta = userRepos.find((r) => r.full_name.toLowerCase() === repoInput.trim().toLowerCase());
 
   return (
     <div className="flex-1 flex flex-col h-full bg-canvas dark:bg-dark-canvas overflow-y-auto p-4 gap-4">
@@ -375,32 +429,198 @@ export const SettingsView: React.FC = () => {
 
           {/* Connected GitHub Profile Card */}
           {githubUser ? (
-            <div className="p-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <img 
-                  src={githubUser.avatar_url} 
-                  alt={githubUser.login} 
-                  className="w-8 h-8 rounded-full border border-brand/30 shrink-0" 
-                />
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-text-primary dark:text-dark-text truncate">
-                    {githubUser.name || githubUser.login}
-                  </span>
-                  <span className="font-mono text-[11px] text-brand truncate">
-                    @{githubUser.login} • {githubUser.public_repos ?? 0} repos
-                  </span>
+            <div className="flex flex-col gap-3">
+              <div className="p-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img 
+                    src={githubUser.avatar_url} 
+                    alt={githubUser.login} 
+                    className="w-8 h-8 rounded-full border border-brand/30 shrink-0" 
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-text-primary dark:text-dark-text truncate">
+                      {githubUser.name || githubUser.login}
+                    </span>
+                    <span className="font-mono text-[11px] text-brand truncate">
+                      @{githubUser.login} • {userRepos.length > 0 ? `${userRepos.length} repos detectados` : `${githubUser.public_repos ?? 0} repos públicos`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => loadUserRepos()}
+                    disabled={loadingRepos}
+                    title="Recargar lista de repositorios desde GitHub"
+                    className="p-1.5 rounded-lg border border-border-subtle hover:bg-surface text-text-secondary hover:text-text-primary"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingRepos ? 'animate-spin text-brand' : ''}`} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGithub}
+                    className="py-1 px-2.5 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-[11px] hover:bg-red-100"
+                  >
+                    Desconectar
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleDisconnectGithub}
-                className="py-1 px-2.5 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-[11px] hover:bg-red-100"
-              >
-                Desconectar
-              </button>
+
+              {/* Selector de Repositorios */}
+              <div className="flex flex-col gap-2 pt-2 border-t border-border-subtle dark:border-dark-border">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-text-secondary dark:text-dark-text-muted flex items-center gap-1.5 uppercase tracking-wide">
+                    <FolderGit2 className="w-3.5 h-3.5 text-brand" />
+                    <span>Selector de Repositorios de GitHub</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsManualInput(!isManualInput)}
+                    className="text-[10px] text-brand hover:underline font-semibold"
+                  >
+                    {isManualInput ? '« Usar Selector de Repositorios' : 'Ingresar manual »'}
+                  </button>
+                </div>
+
+                {isManualInput ? (
+                  <div>
+                    <input
+                      type="text"
+                      value={repoInput}
+                      onChange={(e) => setRepoInput(e.target.value)}
+                      placeholder="usuario/repositorio (ej: sendeiser/LinearStudio)"
+                      className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg px-3 py-1.5 font-mono text-xs outline-none focus:border-brand"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {/* Búsqueda / Filtro de Repos */}
+                    {userRepos.length > 5 && (
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={repoSearch}
+                          onChange={(e) => setRepoSearch(e.target.value)}
+                          placeholder={`Filtrar entre tus ${userRepos.length} repositorios...`}
+                          className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg pl-7 pr-3 py-1 text-xs outline-none focus:border-brand"
+                        />
+                      </div>
+                    )}
+
+                    {loadingRepos ? (
+                      <div className="py-3 px-3 rounded-lg bg-surface-subtle border border-border-subtle flex items-center gap-2 text-xs text-text-secondary">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand" />
+                        <span>Cargando tus repositorios desde la API de GitHub...</span>
+                      </div>
+                    ) : filteredRepos.length > 0 ? (
+                      <select
+                        value={repoInput}
+                        onChange={(e) => {
+                          setRepoInput(e.target.value);
+                          setActiveRepoFullName(e.target.value);
+                          setSyncStats(null);
+                        }}
+                        className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg px-3 py-2 font-mono text-xs outline-none focus:border-brand cursor-pointer text-text-primary dark:text-dark-text shadow-sm"
+                      >
+                        <option value="">-- Elige un repositorio de tu cuenta --</option>
+                        {filteredRepos.map((r) => (
+                          <option key={r.id} value={r.full_name}>
+                            {r.private ? '🔒 [Privado]' : '🌐 [Público]'} {r.full_name} ({r.open_issues_count} issues abiertos)
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-xs flex flex-col gap-1">
+                        <span>No se encontraron repositorios con el filtro actual o tu token no tiene permisos de lectura de repositorios.</span>
+                        <span className="text-[11px] opacity-80">Puedes usar la opción de ingreso manual arriba.</span>
+                      </div>
+                    )}
+
+                    {/* Metadata Card del Repositorio Seleccionado */}
+                    {selectedRepoMeta && (
+                      <div className="p-2.5 rounded-lg border border-brand/30 bg-brand/5 dark:bg-dark-brand/10 flex flex-col gap-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 font-bold font-mono text-text-primary dark:text-dark-text truncate">
+                            {selectedRepoMeta.private ? (
+                              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            ) : (
+                              <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            )}
+                            <span className="truncate">{selectedRepoMeta.full_name}</span>
+                          </div>
+                          <a
+                            href={selectedRepoMeta.html_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-brand hover:underline flex items-center gap-0.5 text-[10px] shrink-0 font-medium"
+                          >
+                            <span>Abrir GitHub</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </div>
+                        {selectedRepoMeta.description && (
+                          <p className="text-[11px] text-text-secondary dark:text-dark-text-muted line-clamp-2">
+                            {selectedRepoMeta.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-text-secondary pt-0.5">
+                          <span className="flex items-center gap-1 text-brand font-bold">
+                            <GitPullRequest className="w-3 h-3" />
+                            <span>{selectedRepoMeta.open_issues_count} issues en GitHub</span>
+                          </span>
+                          {selectedRepoMeta.stargazers_count !== undefined && selectedRepoMeta.stargazers_count > 0 && (
+                            <span className="flex items-center gap-1 text-amber-500">
+                              <Star className="w-3 h-3" />
+                              <span>{selectedRepoMeta.stargazers_count}</span>
+                            </span>
+                          )}
+                          <span>Rama: {selectedRepoMeta.default_branch || 'main'}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Botones de Acción y Sincronización */}
+                <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSyncGithubIssues()}
+                    disabled={syncingGh || !repoInput}
+                    className="py-2 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs shadow-sm flex items-center gap-2 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${syncingGh ? 'animate-spin' : ''}`} />
+                    <span>{syncingGh ? 'Sincronizando con Supabase...' : `Sincronizar Issues de ${repoInput || 'Repositorio'}`}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSaveRepo()}
+                    className="py-2 px-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated hover:bg-surface border border-border-subtle text-text-primary dark:text-dark-text font-bold text-xs"
+                  >
+                    Guardar Activo
+                  </button>
+
+                  {syncStats && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('board')}
+                      className="py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <span>Ver en Tablero Activo</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
+            /* Formulario para vincular token si no está conectado */
             <form onSubmit={handleConnectGithub} className="flex flex-col gap-2 text-xs">
+              <p className="text-text-secondary dark:text-dark-text-muted text-[11px] leading-relaxed">
+                Vincula tu cuenta mediante un Personal Access Token (PAT). Una vez conectado, podrás seleccionar cualquiera de tus repositorios y sincronizar sus issues automáticamente.
+              </p>
               <div>
                 <label className="block text-[10px] font-bold text-text-secondary dark:text-dark-text-muted mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1">
@@ -446,42 +666,6 @@ export const SettingsView: React.FC = () => {
               </button>
             </form>
           )}
-
-          {/* Repo Coordinates & Sync Form */}
-          <form onSubmit={handleSaveRepo} className="flex flex-col gap-2.5 text-xs pt-1 border-t border-border-subtle dark:border-dark-border">
-            <div>
-              <label className="block text-[10px] font-bold text-text-secondary dark:text-dark-text-muted mb-1">
-                Coordenadas del Repositorio de GitHub (owner/repo)
-              </label>
-              <input
-                type="text"
-                required
-                value={repoInput}
-                onChange={(e) => setRepoInput(e.target.value)}
-                placeholder="ej: tincho/hyper-flow o boxtools"
-                className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg px-3 py-1.5 font-mono text-xs outline-none focus:border-brand"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                className="py-1.5 px-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated hover:bg-surface border border-border-subtle text-text-primary font-bold text-xs"
-              >
-                Guardar Repositorio
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSyncGithubIssues}
-                disabled={syncingGh}
-                className="py-1.5 px-3 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand font-bold text-xs border border-brand/30 hover:bg-brand/20 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncingGh ? 'animate-spin' : ''}`} />
-                <span>{syncingGh ? 'Sincronizando...' : 'Sincronizar Issues de GitHub'}</span>
-              </button>
-            </div>
-          </form>
         </div>
 
         {/* Section 4: Visual Theme & Appearance */}

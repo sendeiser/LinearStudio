@@ -108,3 +108,4 @@ python scripts/linear_studio.py update-status --project "sendeiser/LinearStudio"
 ## 📄 Licencia
 
 Este proyecto se distribuye bajo la licencia MIT.
+

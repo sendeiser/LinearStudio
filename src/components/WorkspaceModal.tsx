@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Layers, Plus, Users, GitBranch, Check, AlertCircle } from 'lucide-react';
+import { X, Layers, Plus, Users, GitBranch, Check, AlertCircle, FolderGit2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
 import { workspaceService, WorkspaceSummary } from '../services/workspaceService';
+import { githubService, GitHubRepositoryItem } from '../services/githubService';
 import { isValidRepoName } from '../services/authHelpers';
 
 export const WorkspaceModal: React.FC = () => {
@@ -14,13 +15,16 @@ export const WorkspaceModal: React.FC = () => {
     setIsAuthModalOpen,
     activeRepoId,
     setActiveRepoId,
-    setActiveRepoFullName
+    setActiveRepoFullName,
+    githubToken,
+    githubUser
   } = useStore();
 
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [newWsName, setNewWsName] = useState('');
   const [newRepoFullName, setNewRepoFullName] = useState('tincho/hyper-flow');
+  const [userRepos, setUserRepos] = useState<GitHubRepositoryItem[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'developer' | 'viewer'>('developer');
   const [selectedWsForInvite, setSelectedWsForInvite] = useState<string | null>(null);
@@ -46,8 +50,13 @@ export const WorkspaceModal: React.FC = () => {
   useEffect(() => {
     if (isWorkspaceModalOpen && currentUserEmail) {
       loadWorkspaces();
+      if (githubToken) {
+        githubService.getUserRepositories(githubToken)
+          .then((repos) => setUserRepos(repos))
+          .catch(() => setUserRepos([]));
+      }
     }
-  }, [isWorkspaceModalOpen, currentUserEmail]);
+  }, [isWorkspaceModalOpen, currentUserEmail, githubToken]);
 
   if (!isWorkspaceModalOpen) return null;
 
@@ -250,9 +259,43 @@ export const WorkspaceModal: React.FC = () => {
 
               {/* Create Workspace Form */}
               <form onSubmit={handleCreateWorkspace} className="pt-2 border-t border-border-subtle dark:border-dark-border flex flex-col gap-2.5">
-                <span className="text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider flex items-center gap-1">
-                  <Plus className="w-3.5 h-3.5" /> Crear Nuevo Workspace y Vincular Repo
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-text-secondary dark:text-dark-text-muted uppercase tracking-wider flex items-center gap-1">
+                    <Plus className="w-3.5 h-3.5" /> Crear Nuevo Workspace y Vincular Repo
+                  </span>
+                  {githubUser && (
+                    <span className="text-[10px] text-brand font-medium flex items-center gap-1">
+                      <FolderGit2 className="w-3 h-3" /> @{githubUser.login}
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick GitHub Repositories Dropdown */}
+                {userRepos.length > 0 && (
+                  <div className="p-2 rounded bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle flex flex-col gap-1">
+                    <span className="text-[10px] font-semibold text-text-secondary">
+                      Seleccionar de tus repositorios de GitHub:
+                    </span>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          setNewRepoFullName(val);
+                          const repoName = val.split('/')[1] || val;
+                          if (!newWsName) setNewWsName(repoName);
+                        }
+                      }}
+                      className="bg-canvas dark:bg-dark-canvas border border-border-subtle rounded px-2 py-1 text-xs font-mono outline-none focus:border-brand cursor-pointer"
+                    >
+                      <option value="">-- Elige un repositorio para autocompletar --</option>
+                      {userRepos.map((r) => (
+                        <option key={r.id} value={r.full_name}>
+                          {r.private ? '🔒' : '🌐'} {r.full_name} ({r.open_issues_count} issues)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>

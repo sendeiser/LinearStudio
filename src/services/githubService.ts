@@ -1,4 +1,7 @@
 import { Issue, Priority } from '../types/issue';
+import { supabase } from '../lib/supabase';
+import { workspaceService } from './workspaceService';
+import { dataService } from './dataService';
 
 export interface GitHubRepoCoordinates {
   owner: string;
@@ -25,6 +28,31 @@ export interface GitHubUser {
   bio: string | null;
   public_repos: number;
   html_url: string;
+}
+
+export interface GitHubRepositoryItem {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  description: string | null;
+  html_url: string;
+  open_issues_count: number;
+  stargazers_count?: number;
+  default_branch?: string;
+  updated_at: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+}
+
+export interface GitHubSyncResult {
+  repositoryId: string;
+  repoFullName: string;
+  syncedCount: number;
+  openCount: number;
+  closedCount: number;
 }
 
 class GitHubService {
@@ -67,6 +95,166 @@ class GitHubService {
     }
 
     return await response.json();
+  }
+
+  public async getUserRepositories(token?: string): Promise<GitHubRepositoryItem[]> {
+    const tok = token || this.getToken();
+    if (!tok) {
+      throw new Error('No se proporcionó ningún token de GitHub para listar repositorios.');
+    }
+
+    const response = await fetch(
+      'https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member',
+      {
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'LinearStudio-Client'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Token de GitHub no autorizado al listar repositorios (401).');
+      }
+      throw new Error(`Error al listar repositorios de GitHub (${response.status}): ${response.statusText}`);
+    }
+
+    const rawRepos = await response.json();
+    return (rawRepos || []).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      full_name: r.full_name,
+      private: Boolean(r.private),
+      description: r.description || null,
+      html_url: r.html_url,
+      open_issues_count: r.open_issues_count ?? 0,
+      stargazers_count: r.stargazers_count ?? 0,
+      default_branch: r.default_branch || 'main',
+      updated_at: r.updated_at,
+      owner: {
+        login: r.owner?.login || '',
+        avatar_url: r.owner?.avatar_url || ''
+      }
+    }));
+  }
+
+  public async syncRepoIssuesToSupabase(
+    fullRepo: string,
+    token?: string
+  ): Promise<GitHubSyncResult> {
+    const tok = token || this.getToken();
+    const remoteIssues = await this.fetchRepoIssues(fullRepo, tok);
+
+    // 1. Resolver workspace y repositorio vinculado en Supabase Cloud
+    let repoId: string | null = null;
+    try {
+      const workspaces = await workspaceService.listWorkspaces();
+      for (const ws of workspaces) {
+        const found = ws.repos.find((r) => r.fullName.toLowerCase() === fullRepo.toLowerCase());
+        if (found) {
+          repoId = found.id;
+          break;
+        }
+      }
+      if (!repoId) {
+        const repoName = fullRepo.split('/')[1] || fullRepo;
+        repoId = await workspaceService.createWorkspace(repoName, fullRepo);
+      }
+    } catch (e) {
+      console.warn('Notice al resolver o crear workspace en Supabase:', e);
+    }
+
+    // 2. Persistir issues y subtareas en Supabase Cloud (ls_issues y ls_subtasks)
+    let openCount = 0;
+    let closedCount = 0;
+
+    if (repoId) {
+      for (const issue of remoteIssues) {
+        if (issue.status === 'done') closedCount++;
+        else openCount++;
+
+        try {
+          const { data: existing } = await supabase
+            .from('ls_issues')
+            .select('id')
+            .eq('repository_id', repoId)
+            .eq('number', issue.id)
+            .maybeSingle();
+
+          let issueUuid = existing?.id;
+          if (existing) {
+            await supabase
+              .from('ls_issues')
+              .update({
+                title: issue.title,
+                description: issue.description,
+                status: issue.status,
+                priority: issue.priority,
+                tags: issue.tags,
+                assignee_name: issue.assignee.name,
+                assignee_role: issue.assignee.role,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existing.id);
+          } else {
+            const { data: created, error } = await supabase
+              .from('ls_issues')
+              .insert({
+                repository_id: repoId,
+                number: issue.id,
+                title: issue.title,
+                description: issue.description,
+                status: issue.status,
+                priority: issue.priority,
+                tags: issue.tags,
+                assignee_name: issue.assignee.name,
+                assignee_role: issue.assignee.role
+              })
+              .select('id')
+              .single();
+
+            if (!error && created) {
+              issueUuid = created.id;
+            }
+          }
+
+          if (issueUuid && issue.subtasks && issue.subtasks.length > 0) {
+            await supabase.from('ls_subtasks').delete().eq('issue_id', issueUuid);
+            await supabase.from('ls_subtasks').insert(
+              issue.subtasks.map((st, idx) => ({
+                issue_id: issueUuid,
+                title: st.title,
+                completed: st.completed,
+                position: idx
+              }))
+            );
+          }
+        } catch (err) {
+          console.warn(`Error al sincronizar issue #${issue.id} en Supabase:`, err);
+        }
+      }
+    }
+
+    // 3. Sincronizar en dataService para reactividad inmediata
+    for (const r of remoteIssues) {
+      dataService.createIssue({
+        title: r.title,
+        description: r.description,
+        priority: r.priority,
+        status: r.status,
+        projectName: fullRepo
+      });
+    }
+
+    return {
+      repositoryId: repoId || '',
+      repoFullName: fullRepo,
+      syncedCount: remoteIssues.length,
+      openCount,
+      closedCount
+    };
   }
 
   public async fetchRepoIssues(fullRepo: string, token?: string): Promise<Issue[]> {
