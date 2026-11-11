@@ -18,12 +18,14 @@ import {
   Trash2,
   Save,
   Plus,
-  Shield
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
 import { dataService } from '../services/dataService';
 import { getActiveIssueRepository } from '../services/issueRepository';
+import { githubService } from '../services/githubService';
 import { ColumnId, Priority } from '../types/issue';
 
 export const IssueDetailDrawer: React.FC = () => {
@@ -36,7 +38,8 @@ export const IssueDetailDrawer: React.FC = () => {
     currentUserEmail,
     userRole,
     activeRepoId,
-    activeRepoFullName
+    activeRepoFullName,
+    githubToken
   } = useStore();
 
   const [newComment, setNewComment] = useState('');
@@ -145,6 +148,43 @@ export const IssueDetailDrawer: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
+  // Cambiar directamente de columna / estado desde el drawer
+  const handleDirectStatusChange = async (newStatus: ColumnId) => {
+    if (!selectedIssue || selectedIssue.status === newStatus) return;
+
+    // 1. Local dataService
+    dataService.moveIssue(selectedIssue.id, newStatus);
+    const updated = dataService.getIssueById(selectedIssue.id);
+    if (updated) setSelectedIssue(updated);
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+
+    // 2. Supabase Cloud DB
+    try {
+      await repo.move(selectedIssue.id, newStatus);
+    } catch (err) {
+      console.warn('Notice al mover issue en Supabase desde Drawer:', err);
+    }
+
+    // 3. Sincronizar estado a GitHub
+    const targetRepo = selectedIssue.projectName || activeRepoFullName;
+    const tok = githubToken || githubService.getToken();
+    if (tok && targetRepo && targetRepo.includes('/')) {
+      try {
+        await githubService.updateGitHubIssue(
+          targetRepo,
+          selectedIssue.id,
+          {
+            state: newStatus === 'done' ? 'closed' : 'open',
+            state_reason: newStatus === 'done' ? 'completed' : undefined
+          },
+          tok
+        );
+      } catch (ghErr) {
+        console.warn('Notice al sincronizar cambio de columna a GitHub desde Drawer:', ghErr);
+      }
+    }
+  };
+
   // Guardar edición del issue (CRUD Update)
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,6 +196,7 @@ export const IssueDetailDrawer: React.FC = () => {
       .map((t) => t.trim())
       .filter(Boolean);
 
+    // 1. Supabase Cloud DB
     try {
       await repo.update(selectedIssue.id, {
         title: editTitle.trim(),
@@ -169,6 +210,7 @@ export const IssueDetailDrawer: React.FC = () => {
       console.warn('Notice al actualizar issue en Supabase:', err);
     }
 
+    // 2. Local dataService
     const updated = dataService.updateIssue(selectedIssue.id, {
       title: editTitle.trim(),
       description: editDescription,
@@ -183,6 +225,29 @@ export const IssueDetailDrawer: React.FC = () => {
     });
 
     if (updated) setSelectedIssue(updated);
+
+    // 3. GitHub Issue Update (bidirectional)
+    const targetRepo = selectedIssue.projectName || activeRepoFullName;
+    const tok = githubToken || githubService.getToken();
+    if (tok && targetRepo && targetRepo.includes('/')) {
+      try {
+        await githubService.updateGitHubIssue(
+          targetRepo,
+          selectedIssue.id,
+          {
+            title: editTitle.trim(),
+            body: editDescription.trim(),
+            state: editStatus === 'done' ? 'closed' : 'open',
+            state_reason: editStatus === 'done' ? 'completed' : undefined,
+            labels: [editPriority, editStatus, ...parsedTags]
+          },
+          tok
+        );
+      } catch (ghErr) {
+        console.warn('Notice al actualizar issue en GitHub desde Drawer:', ghErr);
+      }
+    }
+
     setIsSaving(false);
     setIsEditing(false);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
@@ -191,13 +256,28 @@ export const IssueDetailDrawer: React.FC = () => {
   // Eliminar el issue (CRUD Delete)
   const handleDeleteIssue = async () => {
     setIsDeleting(true);
+
+    // 1. Supabase Cloud DB
     try {
       await repo.delete(selectedIssue.id);
     } catch (err: any) {
       console.warn('Notice al eliminar issue en Supabase:', err);
     }
 
+    // 2. Local dataService
     dataService.deleteIssue(selectedIssue.id);
+
+    // 3. GitHub Issue Delete / Close (bidirectional)
+    const targetRepo = selectedIssue.projectName || activeRepoFullName;
+    const tok = githubToken || githubService.getToken();
+    if (tok && targetRepo && targetRepo.includes('/')) {
+      try {
+        await githubService.closeOrDeleteGitHubIssue(targetRepo, selectedIssue.id, tok);
+      } catch (ghErr) {
+        console.warn('Notice al cerrar/eliminar issue en GitHub desde Drawer:', ghErr);
+      }
+    }
+
     setIsDeleting(false);
     setSelectedIssue(null);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
@@ -252,9 +332,21 @@ export const IssueDetailDrawer: React.FC = () => {
             </>
           )}
 
-          <span className="px-2 py-0.5 rounded-full bg-done-bg dark:bg-emerald-950/50 border border-done-border dark:border-emerald-800 text-done dark:text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-done" /> {selectedIssue.status.toUpperCase()}
-          </span>
+          <div className="relative inline-flex items-center">
+            <select
+              value={selectedIssue.status}
+              onChange={(e) => handleDirectStatusChange(e.target.value as ColumnId)}
+              className="appearance-none pl-2.5 pr-6 py-0.5 rounded-full bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border text-text-primary dark:text-dark-text font-mono text-[10px] font-bold uppercase cursor-pointer hover:border-brand focus:outline-none focus:ring-1 focus:ring-brand shadow-xs"
+              title="Cambiar estado / columna del issue"
+            >
+              <option value="backlog">Backlog</option>
+              <option value="todo">To Do</option>
+              <option value="in_progress">In Progress</option>
+              <option value="in_review">In Review</option>
+              <option value="done">Done</option>
+            </select>
+            <ChevronDown className="w-3 h-3 absolute right-1.5 pointer-events-none text-text-muted" />
+          </div>
 
           <a
             href={`https://github.com/${activeRepoFullName}/issues/${selectedIssue.id}`}

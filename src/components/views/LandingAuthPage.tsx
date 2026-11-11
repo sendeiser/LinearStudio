@@ -45,10 +45,49 @@ export const LandingAuthPage: React.FC = () => {
       }
     });
 
-    if (typeof window !== 'undefined' && (window.location.hash.includes('recovery') || window.location.hash.includes('type=recovery'))) {
-      setActiveTab('new_password');
-      setSuccessMsg('✓ Enlace de recuperación detectado. Establece tu nueva contraseña.');
-    }
+    const initRecoverySession = async () => {
+      if (typeof window === 'undefined') return;
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get('code');
+      if (code) {
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error) {
+            setActiveTab('new_password');
+            setSuccessMsg('✓ Enlace de recuperación verificado con éxito. Establece tu nueva contraseña.');
+            return;
+          }
+        } catch (e) {
+          console.warn('Notice exchangeCodeForSession:', e);
+        }
+      }
+
+      if (window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
+
+        if (accessToken && refreshToken) {
+          try {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            setActiveTab('new_password');
+            setSuccessMsg('✓ Enlace de recuperación detectado. Establece tu nueva contraseña.');
+            return;
+          } catch (e) {
+            console.warn('Notice setSession from hash:', e);
+          }
+        } else if (type === 'recovery' || window.location.hash.includes('recovery')) {
+          setActiveTab('new_password');
+          setSuccessMsg('✓ Enlace de recuperación detectado. Establece tu nueva contraseña.');
+        }
+      }
+    };
+    initRecoverySession();
 
     return () => {
       authListener?.subscription?.unsubscribe();
@@ -90,9 +129,14 @@ export const LandingAuthPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      let { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) {
-        throw new Error('No se detectó una sesión activa de recuperación. Por favor haz clic en "Volver a Iniciar Sesión" para ingresar directamente con tu contraseña.');
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        sessionData = refreshData;
+      }
+
+      if (!sessionData?.session) {
+        throw new Error('No se detectó una sesión activa de recuperación. Si el enlace expiró o ya fue utilizado, por favor solicita uno nuevo o haz clic en "Volver a Iniciar Sesión".');
       }
       const user = await workspaceService.updatePassword(password);
       setSuccessMsg('✓ ¡Contraseña actualizada con éxito! Ingresando al panel...');

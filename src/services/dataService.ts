@@ -369,6 +369,24 @@ class DataService {
     this.persist();
     return count;
   }
+
+  public syncExternalIssues(externalIssues: Issue[]): void {
+    const existingMap = new Map<number, Issue>(this.issues.map((i) => [i.id, i]));
+    for (const ext of externalIssues) {
+      if (existingMap.has(ext.id)) {
+        const current = existingMap.get(ext.id)!;
+        existingMap.set(ext.id, {
+          ...current,
+          ...ext,
+          updatedAt: ext.updatedAt || new Date().toISOString()
+        });
+      } else {
+        existingMap.set(ext.id, ext);
+      }
+    }
+    this.issues = Array.from(existingMap.values()).sort((a, b) => b.id - a.id);
+    this.persist();
+  }
 }
 
 export const dataService = new DataService();

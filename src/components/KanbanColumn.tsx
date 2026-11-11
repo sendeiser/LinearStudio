@@ -37,7 +37,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, issues })
         <section 
           ref={provided.innerRef}
           {...provided.droppableProps}
-          className={`kanban-col w-full md:w-72 shrink-0 flex flex-col max-h-full rounded-xl bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border shadow-card transition-colors ${
+          className={`kanban-col w-full md:w-72 shrink-0 flex flex-col h-full min-h-0 rounded-xl bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border shadow-card transition-colors ${
             snapshot.isDraggingOver ? 'ring-2 ring-brand/40 bg-brand-subtle/20 dark:bg-dark-surface-elevated' : ''
           } ${isHiddenOnMobile ? 'hidden md:flex' : 'flex'}`}
         >
@@ -60,7 +60,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, issues })
           </div>
 
           {/* Cards Area */}
-          <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5 min-h-[120px]">
+          <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2.5 min-h-0 touch-pan-y overscroll-contain">
             {issues.map((issue, index) => (
               <IssueCard key={issue.id} issue={issue} index={index} />
             ))}

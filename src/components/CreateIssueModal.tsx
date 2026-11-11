@@ -4,9 +4,18 @@ import { useStore } from '../store/useStore';
 import { ColumnId, Priority } from '../types/issue';
 import { dataService } from '../services/dataService';
 import { getActiveIssueRepository } from '../services/issueRepository';
+import { githubService } from '../services/githubService';
 
 export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreated }) => {
-  const { isCreateModalOpen, setIsCreateModalOpen, activeRepoId, currentUserEmail, userRole } = useStore();
+  const { 
+    isCreateModalOpen, 
+    setIsCreateModalOpen, 
+    activeRepoId, 
+    activeRepoFullName, 
+    currentUserEmail, 
+    userRole,
+    githubToken 
+  } = useStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
@@ -18,6 +27,7 @@ export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreate
     e.preventDefault();
     if (!title.trim()) return;
 
+    // 1. Supabase Cloud DB
     const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
     try {
       await repo.create({
@@ -30,12 +40,32 @@ export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreate
       console.warn('Notice al crear issue en Supabase:', err);
     }
 
+    // 2. dataService
     dataService.createIssue({
       title,
       description,
       priority,
-      status
+      status,
+      projectName: activeRepoFullName
     });
+
+    // 3. GitHub Issue Creation
+    const tok = githubToken || githubService.getToken();
+    if (tok && activeRepoFullName && activeRepoFullName.includes('/')) {
+      try {
+        await githubService.createGitHubIssue(
+          activeRepoFullName,
+          {
+            title: title.trim(),
+            body: description.trim(),
+            labels: [priority, status]
+          },
+          tok
+        );
+      } catch (ghErr) {
+        console.warn('Notice al crear issue en GitHub:', ghErr);
+      }
+    }
 
     setTitle('');
     setDescription('');

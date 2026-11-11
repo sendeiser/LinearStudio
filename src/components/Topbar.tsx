@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Menu, Search, Sun, Moon, RefreshCw, Plus, Cloud, HardDrive } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
+import { githubService } from '../services/githubService';
 
 export const Topbar: React.FC = () => {
+  const queryClient = useQueryClient();
   const { 
     theme, 
     toggleTheme, 
@@ -13,7 +16,8 @@ export const Topbar: React.FC = () => {
     searchQuery,
     setSearchQuery,
     activeRepoFullName,
-    dataMode
+    dataMode,
+    githubToken
   } = useStore();
   const [isSyncing, setIsSyncing] = React.useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -29,9 +33,26 @@ export const Topbar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleSync = () => {
+  const handleSync = async () => {
+    const tok = githubToken || githubService.getToken();
+    if (!tok) {
+      alert('Para sincronizar con GitHub, ingresa tu GitHub PAT en "Configuración & Auth".');
+      return;
+    }
+    if (!activeRepoFullName || !activeRepoFullName.includes('/')) {
+      alert('Selecciona un repositorio válido en formato owner/repo para sincronizar.');
+      return;
+    }
     setIsSyncing(true);
-    setTimeout(() => setIsSyncing(false), 800);
+    try {
+      await githubService.syncRepoIssuesToSupabase(activeRepoFullName, tok);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    } catch (err: any) {
+      console.error('Error al sincronizar issues:', err);
+      alert(`Error al sincronizar con GitHub: ${err.message || 'Verifica tu conexión y permisos del token'}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (

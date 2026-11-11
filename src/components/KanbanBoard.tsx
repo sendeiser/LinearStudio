@@ -5,6 +5,8 @@ import { ColumnId, Issue } from '../types/issue';
 import { KanbanColumn } from './KanbanColumn';
 import { useStore } from '../store/useStore';
 import { dataService } from '../services/dataService';
+import { getActiveIssueRepository } from '../services/issueRepository';
+import { githubService } from '../services/githubService';
 
 interface KanbanBoardProps {
   issues: Issue[];
@@ -20,17 +22,55 @@ const COLUMNS: { id: ColumnId; title: string }[] = [
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
   const queryClient = useQueryClient();
-  const { searchQuery, activeFilter } = useStore();
+  const { 
+    searchQuery, 
+    activeFilter, 
+    activeRepoId, 
+    activeRepoFullName, 
+    currentUserEmail, 
+    userRole, 
+    githubToken 
+  } = useStore();
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
     const issueId = Number(draggableId);
     const newStatus = destination.droppableId as ColumnId;
+    const targetIssue = issues.find((i) => i.id === issueId);
+
+    // 1. Actualización optimista en memoria local
     dataService.moveIssue(issueId, newStatus);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
+
+    // 2. Persistencia en base de datos Supabase Cloud
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.move(issueId, newStatus);
+    } catch (err) {
+      console.warn('Notice al mover issue en Supabase:', err);
+    }
+
+    // 3. Sincronización bidireccional con GitHub
+    const targetRepo = targetIssue?.projectName || activeRepoFullName;
+    const tok = githubToken || githubService.getToken();
+    if (tok && targetRepo && targetRepo.includes('/')) {
+      try {
+        await githubService.updateGitHubIssue(
+          targetRepo,
+          issueId,
+          {
+            state: newStatus === 'done' ? 'closed' : 'open',
+            state_reason: newStatus === 'done' ? 'completed' : undefined
+          },
+          tok
+        );
+      } catch (ghErr) {
+        console.warn('Notice al sincronizar cambio de columna a GitHub:', ghErr);
+      }
+    }
   };
 
   // Filter issues based on search & active filter chip
@@ -57,7 +97,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
     <DragDropContext onDragEnd={handleDragEnd}>
       <main 
         id="board-container" 
-        className="flex-1 overflow-x-auto overflow-y-hidden p-3 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas dark:bg-dark-canvas"
+        className="flex-1 overflow-y-auto md:overflow-y-hidden overflow-x-hidden md:overflow-x-auto p-3 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas dark:bg-dark-canvas touch-pan-y"
       >
         {COLUMNS.map((col) => {
           const colIssues = filteredIssues.filter((i) => i.status === col.id);

@@ -10,6 +10,7 @@
   # Disable Netlify secrets scan or omit keys so public VITE_ keys do not fail the build.
   SECRETS_SCAN_ENABLED = "false"
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_GITHUB_TOKEN"
+  SECRETS_SCAN_OMIT_PATHS = ".env.example, README.md, scripts/linear_studio.py, src/components/views/SettingsView.tsx"
 
 # Single Page Application (SPA) redirect rule
 # Ensures client-side routing and page refreshes work properly without 404s

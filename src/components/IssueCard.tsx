@@ -6,6 +6,7 @@ import { ColumnId, Issue } from '../types/issue';
 import { useStore } from '../store/useStore';
 import { dataService } from '../services/dataService';
 import { getActiveIssueRepository } from '../services/issueRepository';
+import { githubService } from '../services/githubService';
 
 interface IssueCardProps {
   issue: Issue;
@@ -16,29 +17,82 @@ const COLUMN_ORDER: ColumnId[] = ['backlog', 'todo', 'in_progress', 'in_review',
 
 export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
   const queryClient = useQueryClient();
-  const { selectedIssue, setSelectedIssue, currentUserEmail, activeRepoId, userRole } = useStore();
+  const { 
+    selectedIssue, 
+    setSelectedIssue, 
+    currentUserEmail, 
+    activeRepoId, 
+    activeRepoFullName, 
+    userRole, 
+    githubToken 
+  } = useStore();
   const isSelected = selectedIssue?.id === issue.id;
 
   const currentIdx = COLUMN_ORDER.indexOf(issue.status);
   const prevCol = currentIdx > 0 ? COLUMN_ORDER[currentIdx - 1] : null;
   const nextCol = currentIdx < COLUMN_ORDER.length - 1 ? COLUMN_ORDER[currentIdx + 1] : null;
 
-  const handleMove = (e: React.MouseEvent, targetCol: ColumnId) => {
+  const handleMove = async (e: React.MouseEvent, targetCol: ColumnId) => {
     e.stopPropagation();
+
+    // 1. Local update
     dataService.moveIssue(issue.id, targetCol);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
+
+    // 2. Supabase Cloud DB
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.move(issue.id, targetCol);
+    } catch (err) {
+      console.warn('Notice al mover issue en Supabase:', err);
+    }
+
+    // 3. Sincronizar estado a GitHub
+    const targetRepo = issue.projectName || activeRepoFullName;
+    const tok = githubToken || githubService.getToken();
+    if (tok && targetRepo && targetRepo.includes('/')) {
+      try {
+        await githubService.updateGitHubIssue(
+          targetRepo,
+          issue.id,
+          {
+            state: targetCol === 'done' ? 'closed' : 'open',
+            state_reason: targetCol === 'done' ? 'completed' : undefined
+          },
+          tok
+        );
+      } catch (ghErr) {
+        console.warn('Notice al sincronizar cambio de columna a GitHub:', ghErr);
+      }
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm(`¿Eliminar issue #${issue.id}?`)) return;
+
+    // 1. Supabase Cloud DB
     const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
     try {
       await repo.delete(issue.id);
     } catch (err) {
-      console.warn('Notice al eliminar issue:', err);
+      console.warn('Notice al eliminar issue en Supabase:', err);
     }
+
+    // 2. Local dataService
     dataService.deleteIssue(issue.id);
+
+    // 3. GitHub Issue close/delete
+    const targetRepo = issue.projectName || activeRepoFullName;
+    const tok = githubToken || githubService.getToken();
+    if (tok && targetRepo && targetRepo.includes('/')) {
+      try {
+        await githubService.closeOrDeleteGitHubIssue(targetRepo, issue.id, tok);
+      } catch (ghErr) {
+        console.warn('Notice al eliminar issue en GitHub:', ghErr);
+      }
+    }
+
     if (selectedIssue?.id === issue.id) setSelectedIssue(null);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
@@ -84,7 +138,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
           {...provided.dragHandleProps}
           data-testid="issue-card"
           onClick={() => setSelectedIssue(issue)}
-          className={`group p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated transition-all cursor-grab active:cursor-grabbing shadow-card border ${
+          className={`issue-card group p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated transition-all cursor-grab active:cursor-grabbing shadow-card border ${
             snapshot.isDragging
               ? 'ring-2 ring-brand shadow-2xl rotate-1 z-50 bg-surface dark:bg-dark-surface'
               : isSelected
@@ -101,7 +155,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
               {getPriorityBadge()}
               
               {/* Quick Move & Admin Delete */}
-              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+              <div className="flex items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
                 {prevCol && (
                   <button
                     onClick={(e) => handleMove(e, prevCol)}

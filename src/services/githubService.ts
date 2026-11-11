@@ -2,6 +2,7 @@ import { Issue, Priority } from '../types/issue';
 import { supabase } from '../lib/supabase';
 import { workspaceService } from './workspaceService';
 import { dataService } from './dataService';
+import { useStore } from '../store/useStore';
 
 export interface GitHubRepoCoordinates {
   owner: string;
@@ -58,17 +59,23 @@ export interface GitHubSyncResult {
 class GitHubService {
   public getToken(): string {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('github_token') || (import.meta as any).env?.VITE_GITHUB_TOKEN || '';
+      try {
+        const storeToken = useStore.getState().githubToken;
+        if (storeToken) return storeToken;
+      } catch {
+        // Fallback
+      }
+      return (import.meta as any).env?.VITE_GITHUB_TOKEN || '';
     }
     return '';
   }
 
   public setToken(token: string): void {
     if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem('github_token', token.trim());
-      } else {
-        localStorage.removeItem('github_token');
+      try {
+        useStore.getState().setGithubToken(token ? token.trim() : null);
+      } catch {
+        // Fallback
       }
     }
   }
@@ -147,26 +154,25 @@ class GitHubService {
     const tok = token || this.getToken();
     const remoteIssues = await this.fetchRepoIssues(fullRepo, tok);
 
-    // 1. Resolver workspace y repositorio vinculado en Supabase Cloud
+    // 1. Resolver o vincular repositorio en Supabase Cloud
     let repoId: string | null = null;
     try {
-      const workspaces = await workspaceService.listWorkspaces();
-      for (const ws of workspaces) {
-        const found = ws.repos.find((r) => r.fullName.toLowerCase() === fullRepo.toLowerCase());
-        if (found) {
-          repoId = found.id;
-          break;
-        }
-      }
-      if (!repoId) {
-        const repoName = fullRepo.split('/')[1] || fullRepo;
-        repoId = await workspaceService.createWorkspace(repoName, fullRepo);
+      const { data: repoRow } = await supabase
+        .from('ls_linked_repositories')
+        .select('id')
+        .ilike('full_name', fullRepo.trim())
+        .maybeSingle();
+
+      if (repoRow?.id) {
+        repoId = repoRow.id;
+      } else {
+        repoId = await workspaceService.addLinkedRepository(fullRepo.trim());
       }
     } catch (e) {
-      console.warn('Notice al resolver o crear workspace en Supabase:', e);
+      console.warn('Notice al resolver o vincular repositorio en Supabase:', e);
     }
 
-    // 2. Persistir issues y subtareas en Supabase Cloud (ls_issues y ls_subtasks)
+    // 2. Persistir issues y subtareas en Supabase Cloud (ls_issues y ls_subtasks) con upsert atómico
     let openCount = 0;
     let closedCount = 0;
 
@@ -176,50 +182,28 @@ class GitHubService {
         else openCount++;
 
         try {
-          const { data: existing } = await supabase
+          const { data: upserted, error: upsertErr } = await supabase
             .from('ls_issues')
+            .upsert({
+              repository_id: repoId,
+              number: issue.id,
+              title: issue.title,
+              description: issue.description || '',
+              status: issue.status,
+              priority: issue.priority,
+              tags: issue.tags,
+              assignee_name: issue.assignee?.name || 'Developer',
+              assignee_role: issue.assignee?.role || 'developer',
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'repository_id, number' })
             .select('id')
-            .eq('repository_id', repoId)
-            .eq('number', issue.id)
-            .maybeSingle();
+            .single();
 
-          let issueUuid = existing?.id;
-          if (existing) {
-            await supabase
-              .from('ls_issues')
-              .update({
-                title: issue.title,
-                description: issue.description,
-                status: issue.status,
-                priority: issue.priority,
-                tags: issue.tags,
-                assignee_name: issue.assignee.name,
-                assignee_role: issue.assignee.role,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', existing.id);
-          } else {
-            const { data: created, error } = await supabase
-              .from('ls_issues')
-              .insert({
-                repository_id: repoId,
-                number: issue.id,
-                title: issue.title,
-                description: issue.description,
-                status: issue.status,
-                priority: issue.priority,
-                tags: issue.tags,
-                assignee_name: issue.assignee.name,
-                assignee_role: issue.assignee.role
-              })
-              .select('id')
-              .single();
-
-            if (!error && created) {
-              issueUuid = created.id;
-            }
+          if (upsertErr) {
+            console.warn(`Error al upsert issue #${issue.id}:`, upsertErr.message);
           }
 
+          const issueUuid = upserted?.id;
           if (issueUuid && issue.subtasks && issue.subtasks.length > 0) {
             await supabase.from('ls_subtasks').delete().eq('issue_id', issueUuid);
             await supabase.from('ls_subtasks').insert(
@@ -237,16 +221,13 @@ class GitHubService {
       }
     }
 
-    // 3. Sincronizar en dataService para reactividad inmediata
-    for (const r of remoteIssues) {
-      dataService.createIssue({
-        title: r.title,
-        description: r.description,
-        priority: r.priority,
-        status: r.status,
+    // 3. Sincronizar en dataService preservando IDs de GitHub y sin duplicar
+    dataService.syncExternalIssues(
+      remoteIssues.map((r) => ({
+        ...r,
         projectName: fullRepo
-      });
-    }
+      }))
+    );
 
     return {
       repositoryId: repoId || '',
@@ -405,27 +386,76 @@ class GitHubService {
   public async updateGitHubIssue(
     fullRepo: string,
     issueNumber: number,
-    updates: { state?: 'open' | 'closed'; title?: string; body?: string; labels?: string[] },
+    updates: { state?: 'open' | 'closed'; state_reason?: string; title?: string; body?: string; labels?: string[] },
     token?: string
   ): Promise<any> {
     const { owner, name } = this.parseRepo(fullRepo);
     const tok = token || this.getToken();
-    if (!tok) throw new Error('Se requiere un Token de GitHub para actualizar issues.');
+    if (!tok) return null;
 
-    const res = await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${tok}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'LinearStudio-Client'
-      },
-      body: JSON.stringify(updates)
-    });
-    if (!res.ok) {
-      throw new Error(`Error al actualizar issue #${issueNumber} en GitHub.`);
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'LinearStudio-Client'
+        },
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) {
+        console.warn(`Notice al actualizar issue #${issueNumber} en GitHub (${res.status}): ${res.statusText}`);
+        return null;
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn(`Notice al actualizar issue #${issueNumber} en GitHub:`, err);
+      return null;
     }
-    return await res.json();
+  }
+
+  public async closeOrDeleteGitHubIssue(
+    fullRepo: string,
+    issueNumber: number,
+    token?: string
+  ): Promise<void> {
+    const { owner, name } = this.parseRepo(fullRepo);
+    const tok = token || this.getToken();
+    if (!tok) return;
+
+    try {
+      // 1. Agregar comentario de auditoría
+      await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}/comments`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'LinearStudio-Client'
+        },
+        body: JSON.stringify({
+          body: '🗑️ _Este issue fue eliminado desde el tablero de **Linear Studio**._'
+        })
+      });
+
+      // 2. Cerrar en GitHub con state_reason: not_planned
+      await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'LinearStudio-Client'
+        },
+        body: JSON.stringify({
+          state: 'closed',
+          state_reason: 'not_planned'
+        })
+      });
+    } catch (err) {
+      console.warn(`Aviso al cerrar/eliminar issue #${issueNumber} en GitHub:`, err);
+    }
   }
 
   public formatForExport(issue: Issue): string {
