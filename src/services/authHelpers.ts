@@ -29,6 +29,12 @@ export const friendlyAuthError = (message: string): string => {
   if (lower.includes('password should be at least 6 characters')) {
     return 'La contraseña debe tener al menos 6 caracteres.';
   }
+  if (lower.includes('new password should be different')) {
+    return 'La nueva contraseña debe ser diferente a la anterior.';
+  }
+  if (lower.includes('reauthentication') || lower.includes('requires recent login')) {
+    return 'Por seguridad, debes haber iniciado sesión recientemente para actualizar tu contraseña.';
+  }
   return message;
 };
 

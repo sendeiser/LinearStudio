@@ -21,6 +21,14 @@ const mockClient = (responses: Record<string, unknown>) => {
       },
       getUser: () => {
         return Promise.resolve(responses['getUser'] ?? { data: { user: { id: 'u1', email: 'test@example.com' } }, error: null });
+      },
+      updateUser: (attrs: any) => {
+        calls.push({ method: 'updateUser', args: [attrs] });
+        return Promise.resolve(responses['updateUser'] ?? { data: { user: { id: 'u1', email: 'test@example.com' } }, error: null });
+      },
+      resetPasswordForEmail: (email: string, opts: any) => {
+        calls.push({ method: 'resetPasswordForEmail', args: [email, opts] });
+        return Promise.resolve(responses['resetPasswordForEmail'] ?? { error: null });
       }
     },
     rpc: (fnName: string, params: any) => {
@@ -84,6 +92,33 @@ describe('WorkspaceService', () => {
       p_email: 'elena@example.com',
       p_role: 'developer'
     });
+  });
+
+  it('should update user password successfully', async () => {
+    const { client, calls } = mockClient({});
+    const service = new WorkspaceService(client);
+    const user = await service.updatePassword('NewSecurePass2026!');
+
+    expect(user.id).toBe('u1');
+    const updateCall = calls.find(c => c.method === 'updateUser');
+    expect(updateCall).toBeDefined();
+    expect(updateCall?.args[0]).toEqual({ password: 'NewSecurePass2026!' });
+  });
+
+  it('should validate minimum password length before updating', async () => {
+    const { client } = mockClient({});
+    const service = new WorkspaceService(client);
+    await expect(service.updatePassword('12345')).rejects.toThrow('al menos 6 caracteres');
+  });
+
+  it('should trigger password reset email via resetPasswordForEmail', async () => {
+    const { client, calls } = mockClient({});
+    const service = new WorkspaceService(client);
+    await service.resetPasswordForEmail('user@linear.studio');
+
+    const resetCall = calls.find(c => c.method === 'resetPasswordForEmail');
+    expect(resetCall).toBeDefined();
+    expect(resetCall?.args[0]).toBe('user@linear.studio');
   });
 });
 

@@ -60,6 +60,42 @@ export class WorkspaceService {
     return data.user;
   }
 
+  public async updatePassword(newPassword: string): Promise<User> {
+    const cleanPassword = newPassword.trim();
+    if (cleanPassword.length < 6) {
+      throw new Error('La nueva contraseña debe tener al menos 6 caracteres.');
+    }
+
+    const { data, error } = await this.client.auth.updateUser({
+      password: cleanPassword
+    });
+
+    if (error) {
+      throw new Error(friendlyAuthError(error.message));
+    }
+
+    if (!data.user) {
+      throw new Error('No se pudo actualizar la contraseña del usuario.');
+    }
+
+    return data.user;
+  }
+
+  public async resetPasswordForEmail(email: string): Promise<void> {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      throw new Error('Ingresa un correo electrónico válido.');
+    }
+
+    const { error } = await this.client.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/#recovery` : undefined
+    });
+
+    if (error) {
+      throw new Error(friendlyAuthError(error.message));
+    }
+  }
+
   public async createWorkspace(name: string, repoFullName: string): Promise<string> {
     const cleanName = name.trim();
     const slug = slugify(cleanName);

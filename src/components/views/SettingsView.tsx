@@ -66,6 +66,40 @@ export const SettingsView: React.FC = () => {
   const [syncStats, setSyncStats] = useState<GitHubSyncResult | null>(null);
   const [isManualInput, setIsManualInput] = useState(false);
 
+  // Cambio de contraseña de usuario
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordFeedback, setPasswordFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordFeedback(null);
+
+    if (newPassword.length < 6) {
+      setPasswordFeedback({ type: 'error', text: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordFeedback({ type: 'error', text: 'Las nuevas contraseñas no coinciden. Por favor verifícalas.' });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await workspaceService.updatePassword(newPassword);
+      setPasswordFeedback({ type: 'success', text: '✓ Contraseña actualizada correctamente en Supabase Cloud.' });
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      setPasswordFeedback({ type: 'error', text: err.message || 'Error al actualizar la contraseña.' });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   // Carga de repositorios desde la API de GitHub
   const loadUserRepos = async (token?: string) => {
     const tok = token || githubToken;
@@ -365,6 +399,101 @@ export const SettingsView: React.FC = () => {
               </button>
             </form>
           )}
+        </div>
+
+        {/* Section: Cambiar Contraseña de Usuario */}
+        <div className="p-4 rounded-xl bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border shadow-sm flex flex-col gap-3.5">
+          <div className="flex items-center justify-between border-b border-border-subtle dark:border-dark-border pb-2.5">
+            <span className="font-bold text-xs text-text-primary dark:text-dark-text flex items-center gap-2">
+              <Key className="w-4 h-4 text-brand dark:text-dark-brand" />
+              <span>Seguridad & Cambiar Contraseña</span>
+            </span>
+            <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-brand/10 text-brand dark:text-dark-brand border border-brand/20">
+              SUPABASE AUTH
+            </span>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-3 text-xs">
+            <p className="text-text-secondary dark:text-dark-text-muted text-[11px] leading-relaxed">
+              Actualiza la contraseña de tu cuenta de usuario registrada en Supabase Cloud.
+            </p>
+
+            {passwordFeedback && (
+              <div
+                className={`p-2.5 rounded-lg border text-xs font-semibold flex items-center gap-2 ${
+                  passwordFeedback.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+                }`}
+              >
+                {passwordFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                ) : (
+                  <Shield className="w-4 h-4 shrink-0" />
+                )}
+                <span>{passwordFeedback.text}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] font-bold text-text-secondary dark:text-dark-text-muted mb-1">
+                Nueva Contraseña *
+              </label>
+              <div className="relative">
+                <Lock className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-text-muted" />
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Mínimo 6 caracteres"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg pl-8 pr-9 py-1.5 outline-none focus:border-brand font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-2.5 top-2.5 text-text-muted hover:text-text-primary"
+                >
+                  {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-text-secondary dark:text-dark-text-muted mb-1">
+                Confirmar Nueva Contraseña *
+              </label>
+              <div className="relative">
+                <Lock className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-text-muted" />
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Repite la nueva contraseña"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle rounded-lg pl-8 pr-9 py-1.5 outline-none focus:border-brand font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isUpdatingPassword || !currentUserEmail}
+              className="py-2 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 mt-1 shadow-sm"
+            >
+              {isUpdatingPassword ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Actualizando en Supabase...</span>
+                </>
+              ) : (
+                <>
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Actualizar Contraseña</span>
+                </>
+              )}
+            </button>
+          </form>
         </div>
 
         {/* Section 2: Database Connection & Mode */}
