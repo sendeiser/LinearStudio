@@ -18,6 +18,7 @@ import { Issue, ColumnId, Priority } from '../../types/issue';
 import { useStore } from '../../store/useStore';
 import { dataService } from '../../services/dataService';
 import { workspaceService } from '../../services/workspaceService';
+import { getActiveIssueRepository } from '../../services/issueRepository';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface MultiProjectTriageViewProps {
@@ -33,7 +34,15 @@ interface ProjectCardData {
 
 export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ issues }) => {
   const queryClient = useQueryClient();
-  const { setSelectedIssue } = useStore();
+  const { 
+    setSelectedIssue, 
+    activeRepoId, 
+    setActiveRepoId, 
+    activeRepoFullName, 
+    setActiveRepoFullName, 
+    currentUserEmail, 
+    userRole 
+  } = useStore();
 
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -69,26 +78,28 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
     }
   });
 
-  // Unified list of available projects (DB repos + any unique issue projects)
+  // Unified list of available projects (strictly DB repos when authenticated)
   const availableProjects: ProjectCardData[] = useMemo(() => {
     const list: ProjectCardData[] = [...dbProjects];
 
-    // Check if issues have projects not yet registered in DB
-    const registeredNames = new Set(list.map((p) => p.fullName.toLowerCase()));
-    issues.forEach((issue) => {
-      const pName = issue.projectName;
-      if (pName && !registeredNames.has(pName.toLowerCase())) {
-        list.push({
-          id: `virtual_${pName}`,
-          fullName: pName,
-          defaultBranch: 'main'
-        });
-        registeredNames.add(pName.toLowerCase());
-      }
-    });
+    // Solo crear cards virtuales si no hay sesión autenticada (modo demo local)
+    if (!currentUserEmail) {
+      const registeredNames = new Set(list.map((p) => p.fullName.toLowerCase()));
+      issues.forEach((issue) => {
+        const pName = issue.projectName;
+        if (pName && !registeredNames.has(pName.toLowerCase())) {
+          list.push({
+            id: `virtual_${pName}`,
+            fullName: pName,
+            defaultBranch: 'main'
+          });
+          registeredNames.add(pName.toLowerCase());
+        }
+      });
+    }
 
     return list;
-  }, [dbProjects, issues]);
+  }, [dbProjects, issues, currentUserEmail]);
 
   // Default target project for new issue selector
   useEffect(() => {
@@ -123,16 +134,36 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
     return true;
   });
 
-  const handleStatusChange = (issueId: number, newStatus: ColumnId) => {
+  const handleStatusChange = async (issueId: number, newStatus: ColumnId) => {
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === issueId ? { ...i, status: newStatus } : i)) : old)
+    );
     dataService.moveIssue(issueId, newStatus);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.move(issueId, newStatus);
+    } catch (err) {
+      console.warn('Notice al mover en Supabase:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    }
     setFeedback(`✓ Issue #${issueId} actualizado a '${newStatus}'`);
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  const handlePriorityChange = (issueId: number, newPriority: Priority) => {
+  const handlePriorityChange = async (issueId: number, newPriority: Priority) => {
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === issueId ? { ...i, priority: newPriority } : i)) : old)
+    );
     dataService.updateIssuePriority(issueId, newPriority);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.setPriority(issueId, newPriority);
+    } catch (err) {
+      console.warn('Notice al cambiar prioridad en Supabase:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    }
     setFeedback(`✓ Prioridad del Issue #${issueId} cambiada a '${newPriority}'`);
     setTimeout(() => setFeedback(null), 3000);
   };
@@ -207,6 +238,9 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
       if (newProject.toLowerCase() === oldName.toLowerCase()) {
         setNewProject(newName);
       }
+      if (activeRepoId === editingProject.id || activeRepoFullName.toLowerCase() === oldName.toLowerCase()) {
+        setActiveRepoFullName(newName);
+      }
 
       setFeedback(`✓ Repositorio actualizado a '${newName}' (${newBranch}).`);
       setEditingProject(null);
@@ -224,12 +258,32 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
     setIsDeletingRepo(true);
     try {
       const projName = deletingProject.fullName;
-      if (!deletingProject.id.startsWith('virtual_')) {
-        await workspaceService.deleteLinkedRepository(deletingProject.id);
+      const deletedId = deletingProject.id;
+      if (!deletedId.startsWith('virtual_')) {
+        await workspaceService.deleteLinkedRepository(deletedId);
       }
       dataService.deleteIssuesByProject(projName);
 
+      // Limpiar inmediatamente en caché y actualizar repositorio activo si fue el eliminado
+      queryClient.setQueriesData<Issue[]>(
+        { queryKey: ['issues'] },
+        (old) => (old ? old.filter((i) => (i.projectName || '').toLowerCase() !== projName.toLowerCase()) : old)
+      );
+
+      if (activeRepoId === deletedId || activeRepoFullName.toLowerCase() === projName.toLowerCase()) {
+        const remainingRepos = await workspaceService.listLinkedRepositories();
+        const nextRepo = remainingRepos.find((r) => r.id !== deletedId);
+        if (nextRepo) {
+          setActiveRepoId(nextRepo.id);
+          setActiveRepoFullName(nextRepo.fullName);
+        } else {
+          setActiveRepoId(null);
+          setActiveRepoFullName('Sin repositorio');
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
+      await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       await queryClient.invalidateQueries({ queryKey: ['issues'] });
 
       if (selectedProject.toLowerCase() === projName.toLowerCase()) {
@@ -290,9 +344,10 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
       {/* Project KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {availableProjects.map((proj) => {
-          const projIssues = issues.filter(
-            (i) => (i.projectName || '').toLowerCase() === proj.fullName.toLowerCase()
-          );
+          const projIssues = issues.filter((i) => {
+            const iProj = i.projectName || activeRepoFullName || (availableProjects[0]?.fullName ?? '');
+            return iProj.toLowerCase() === proj.fullName.toLowerCase();
+          });
           const urgentCount = projIssues.filter((i) => i.priority === 'urgent' || i.priority === 'high').length;
           const inProgressCount = projIssues.filter((i) => i.status === 'in_progress').length;
           const doneCount = projIssues.filter((i) => i.status === 'done').length;

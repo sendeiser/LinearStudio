@@ -54,6 +54,25 @@ export const App: React.FC = () => {
 
   // Auth session bootstrap & listener
   useEffect(() => {
+    const bootstrapSessionWorkspace = async () => {
+      try {
+        const list = await workspaceService.listWorkspaces();
+        const allRepos = list.flatMap((w) => w.repos);
+        const currentExists = activeRepoId && allRepos.some((r) => r.id === activeRepoId);
+        if (!currentExists) {
+          if (allRepos.length > 0) {
+            setActiveRepoId(allRepos[0].id);
+            setActiveRepoFullName(allRepos[0].fullName);
+          } else {
+            setActiveRepoId(null);
+            setActiveRepoFullName('Sin repositorio');
+          }
+        }
+      } catch (e) {
+        console.warn('Notice bootstrapping workspace:', e);
+      }
+    };
+
     workspaceService.getCurrentUser().then((user) => {
       if (user?.email) {
         setCurrentUserEmail(user.email);
@@ -61,12 +80,7 @@ export const App: React.FC = () => {
           setGithubToken(integration.token);
           setGithubUser(integration.user);
         });
-        workspaceService.listWorkspaces().then((list) => {
-          if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
-            setActiveRepoId(list[0].repos[0].id);
-            setActiveRepoFullName(list[0].repos[0].fullName);
-          }
-        });
+        bootstrapSessionWorkspace();
       } else {
         setGithubToken(null);
         setGithubUser(null);
@@ -84,12 +98,7 @@ export const App: React.FC = () => {
           setGithubToken(integration.token);
           setGithubUser(integration.user);
         });
-        workspaceService.listWorkspaces().then((list) => {
-          if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
-            setActiveRepoId(list[0].repos[0].id);
-            setActiveRepoFullName(list[0].repos[0].fullName);
-          }
-        });
+        bootstrapSessionWorkspace();
       } else {
         setGithubToken(null);
         setGithubUser(null);
@@ -100,7 +109,7 @@ export const App: React.FC = () => {
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, [setCurrentUserEmail, activeRepoId, queryClient, setGithubToken, setGithubUser]);
+  }, [setCurrentUserEmail, activeRepoId, queryClient, setGithubToken, setGithubUser, setActiveRepoId, setActiveRepoFullName]);
 
   // Global keyboard shortcuts (C to create issue, Esc to close modal/drawer)
   useEffect(() => {
@@ -137,20 +146,21 @@ export const App: React.FC = () => {
     });
   };
 
-  // Fetch issues via TanStack React Query from Supabase Cloud (with dataService fallback)
+  // Fetch issues via TanStack React Query from Supabase Cloud
   const { data: issues = [] } = useQuery({
     queryKey: ['issues', activeRepoId, currentUserEmail],
     queryFn: async () => {
-      try {
-        const repoIssues = await getRepository().list();
-        if (repoIssues && repoIssues.length > 0) {
-          return repoIssues;
+      if (currentUserEmail) {
+        if (!activeRepoId) return [];
+        try {
+          const repoIssues = await getRepository().list();
+          return repoIssues || [];
+        } catch (e) {
+          console.warn('Supabase fetch notice:', e);
+          return [];
         }
-        return dataService.getIssues();
-      } catch (e) {
-        console.warn('Supabase fetch notice, falling back to dataService:', e);
-        return dataService.getIssues();
       }
+      return dataService.getIssues();
     }
   });
 

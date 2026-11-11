@@ -29,7 +29,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
     activeRepoFullName, 
     currentUserEmail, 
     userRole, 
-    githubToken 
+    githubToken,
+    selectedIssue,
+    setSelectedIssue
   } = useStore();
 
   const handleDragEnd = async (result: DropResult) => {
@@ -41,16 +43,35 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
     const newStatus = destination.droppableId as ColumnId;
     const targetIssue = issues.find((i) => i.id === issueId);
 
-    // 1. Actualización optimista en memoria local
+    // 1. Actualización optimista SINCRÓNICA en React Query cache (0ms, sin parpadeo ni retorno)
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => {
+        if (!old) return old;
+        const movingItem = old.find((i) => i.id === issueId);
+        if (!movingItem) return old;
+        const updatedItem = { ...movingItem, status: newStatus };
+        const withoutMoving = old.filter((i) => i.id !== issueId);
+        // Reinsertar preservando orden relativo al destino
+        const destItems = withoutMoving.filter((i) => i.status === newStatus);
+        const otherItems = withoutMoving.filter((i) => i.status !== newStatus);
+        const clampedIdx = Math.min(Math.max(0, destination.index), destItems.length);
+        destItems.splice(clampedIdx, 0, updatedItem);
+        return [...otherItems, ...destItems];
+      }
+    );
     dataService.moveIssue(issueId, newStatus);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    if (selectedIssue?.id === issueId) {
+      setSelectedIssue({ ...selectedIssue, status: newStatus });
+    }
 
-    // 2. Persistencia en base de datos Supabase Cloud
+    // 2. Persistencia en base de datos Supabase Cloud en segundo plano
     const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
     try {
       await repo.move(issueId, newStatus);
     } catch (err) {
       console.warn('Notice al mover issue en Supabase:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
 
     // 3. Sincronización bidireccional con GitHub

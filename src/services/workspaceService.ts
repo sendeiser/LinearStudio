@@ -14,6 +14,15 @@ export interface WorkspaceSummary {
   }>;
 }
 
+export interface WorkspaceMemberInfo {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  role: 'owner' | 'admin' | 'developer' | 'viewer';
+  joinedAt: string;
+}
+
 export class WorkspaceService {
   constructor(private readonly client: SupabaseClient = supabase) {}
 
@@ -170,6 +179,47 @@ export class WorkspaceService {
     return data as string;
   }
 
+  public async listWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberInfo[]> {
+    const { data, error } = await this.client.rpc('ls_list_workspace_members', {
+      p_workspace: workspaceId
+    });
+
+    if (error || !data) {
+      if (error) console.warn('Error al listar miembros:', error.message);
+      return [];
+    }
+
+    return (data as any[]).map((m) => ({
+      id: m.id,
+      userId: m.user_id,
+      email: m.email,
+      name: m.name,
+      role: m.role,
+      joinedAt: m.joined_at
+    }));
+  }
+
+  public async removeMember(workspaceId: string, targetUserId: string): Promise<void> {
+    const { error } = await this.client.rpc('ls_remove_workspace_member', {
+      p_workspace: workspaceId,
+      p_target_user_id: targetUserId
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  public async deleteWorkspace(workspaceId: string): Promise<void> {
+    const { error } = await this.client.rpc('ls_delete_workspace', {
+      p_workspace: workspaceId
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
   // --- GitHub Integrations (Per-User in Supabase DB) ---
   public async getUserGitHubIntegration(): Promise<{ token: string | null; user: any | null }> {
     const user = await this.getCurrentUser();
@@ -257,6 +307,13 @@ export class WorkspaceService {
   }
 
   public async deleteLinkedRepository(repoId: string): Promise<void> {
+    // 1. Obtener workspace_id antes de eliminar el repo
+    const { data: repoRow } = await this.client
+      .from('ls_linked_repositories')
+      .select('workspace_id')
+      .eq('id', repoId)
+      .maybeSingle();
+
     const { error } = await this.client
       .from('ls_linked_repositories')
       .delete()
@@ -264,6 +321,19 @@ export class WorkspaceService {
 
     if (error) {
       throw new Error(`Error al eliminar repositorio: ${error.message}`);
+    }
+
+    // 2. Si el workspace padre quedó sin repositorios, limpiarlo automáticamente
+    if (repoRow?.workspace_id) {
+      const { data: remaining } = await this.client
+        .from('ls_linked_repositories')
+        .select('id')
+        .eq('workspace_id', repoRow.workspace_id)
+        .limit(1);
+
+      if (!remaining || remaining.length === 0) {
+        await this.deleteWorkspace(repoRow.workspace_id).catch(() => {});
+      }
     }
   }
 
@@ -278,18 +348,8 @@ export class WorkspaceService {
     if (workspaces.length > 0) {
       wsId = workspaces[0].id;
     } else {
-      const { data: anyWs } = await this.client
-        .from('ls_workspaces')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
-
-      if (anyWs?.id) {
-        wsId = anyWs.id;
-      } else {
-        const repoBase = cleanName.split('/')[1] || cleanName;
-        wsId = await this.createWorkspace(`${repoBase} Workspace`, cleanName);
-      }
+      const repoBase = cleanName.split('/')[1] || cleanName;
+      return await this.createWorkspace(repoBase, cleanName);
     }
 
     const { data, error } = await this.client

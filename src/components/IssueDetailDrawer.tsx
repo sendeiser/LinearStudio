@@ -22,7 +22,7 @@ import { useStore } from '../store/useStore';
 import { dataService } from '../services/dataService';
 import { getActiveIssueRepository } from '../services/issueRepository';
 import { githubService } from '../services/githubService';
-import { ColumnId, Priority } from '../types/issue';
+import { ColumnId, Issue, Priority } from '../types/issue';
 
 export const IssueDetailDrawer: React.FC = () => {
   const queryClient = useQueryClient();
@@ -146,17 +146,20 @@ export const IssueDetailDrawer: React.FC = () => {
   const handleDirectStatusChange = async (newStatus: ColumnId) => {
     if (!selectedIssue || selectedIssue.status === newStatus) return;
 
-    // 1. Local dataService
+    // 1. Actualización optimista inmediata en React Query, drawer y dataService
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, status: newStatus } : i)) : old)
+    );
     dataService.moveIssue(selectedIssue.id, newStatus);
-    const updated = dataService.getIssueById(selectedIssue.id);
-    if (updated) setSelectedIssue(updated);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    setSelectedIssue({ ...selectedIssue, status: newStatus });
 
     // 2. Supabase Cloud DB
     try {
       await repo.move(selectedIssue.id, newStatus);
     } catch (err) {
       console.warn('Notice al mover issue en Supabase desde Drawer:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
 
     // 3. Sincronizar estado a GitHub

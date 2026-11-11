@@ -22,3 +22,4 @@ export interface PullRequest {
   htmlUrl: string;
   aiReview?: string;
 }
+

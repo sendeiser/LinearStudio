@@ -35,16 +35,23 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
   const handleMove = async (e: React.MouseEvent, targetCol: ColumnId) => {
     e.stopPropagation();
 
-    // 1. Local update
+    // 1. Actualización optimista inmediata (0ms) en React Query y dataService
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === issue.id ? { ...i, status: targetCol } : i)) : old)
+    );
     dataService.moveIssue(issue.id, targetCol);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    if (selectedIssue?.id === issue.id) {
+      setSelectedIssue({ ...selectedIssue, status: targetCol });
+    }
 
-    // 2. Supabase Cloud DB
+    // 2. Persistencia en Supabase Cloud DB en segundo plano sin re-render brusco
     const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
     try {
       await repo.move(issue.id, targetCol);
     } catch (err) {
       console.warn('Notice al mover issue en Supabase:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
 
     // 3. Sincronizar estado a GitHub
@@ -71,16 +78,22 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
     e.stopPropagation();
     if (!window.confirm(`¿Eliminar issue #${issue.id}?`)) return;
 
-    // 1. Supabase Cloud DB
+    // 1. Optimistic delete en caché
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.filter((i) => i.id !== issue.id) : old)
+    );
+    dataService.deleteIssue(issue.id);
+    if (selectedIssue?.id === issue.id) setSelectedIssue(null);
+
+    // 2. Supabase Cloud DB
     const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
     try {
       await repo.delete(issue.id);
     } catch (err) {
       console.warn('Notice al eliminar issue en Supabase:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
-
-    // 2. Local dataService
-    dataService.deleteIssue(issue.id);
 
     // 3. GitHub Issue close/delete
     const targetRepo = issue.projectName || activeRepoFullName;
@@ -92,9 +105,6 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
         console.warn('Notice al eliminar issue en GitHub:', ghErr);
       }
     }
-
-    if (selectedIssue?.id === issue.id) setSelectedIssue(null);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
   const getPriorityBadge = () => {
@@ -138,7 +148,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
           {...provided.dragHandleProps}
           data-testid="issue-card"
           onClick={() => setSelectedIssue(issue)}
-          className={`issue-card group p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated transition-all cursor-grab active:cursor-grabbing shadow-card border ${
+          className={`issue-card group p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated transition-colors duration-150 cursor-grab active:cursor-grabbing shadow-card border ${
             snapshot.isDragging
               ? 'ring-2 ring-brand shadow-2xl rotate-1 z-50 bg-surface dark:bg-dark-surface'
               : isSelected

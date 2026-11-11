@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { X, Layers, Plus, Users, GitBranch, Check, AlertCircle, FolderGit2 } from 'lucide-react';
+import { 
+  X, 
+  Layers, 
+  Plus, 
+  Users, 
+  UserPlus,
+  UserMinus,
+  GitBranch, 
+  Check, 
+  AlertCircle, 
+  FolderGit2,
+  Trash2,
+  Loader2
+} from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
-import { workspaceService, WorkspaceSummary } from '../services/workspaceService';
+import { workspaceService, WorkspaceSummary, WorkspaceMemberInfo } from '../services/workspaceService';
 import { githubService, GitHubRepositoryItem } from '../services/githubService';
 import { isValidRepoName } from '../services/authHelpers';
 
@@ -23,11 +36,19 @@ export const WorkspaceModal: React.FC = () => {
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [newWsName, setNewWsName] = useState('');
-  const [newRepoFullName, setNewRepoFullName] = useState('tincho/hyper-flow');
+  const [newRepoFullName, setNewRepoFullName] = useState('');
   const [userRepos, setUserRepos] = useState<GitHubRepositoryItem[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'developer' | 'viewer'>('developer');
   const [selectedWsForInvite, setSelectedWsForInvite] = useState<string | null>(null);
+
+  // Members panel state per workspace
+  const [selectedWsForMembers, setSelectedWsForMembers] = useState<string | null>(null);
+  const [membersByWs, setMembersByWs] = useState<Record<string, WorkspaceMemberInfo[]>>({});
+  const [loadingMembersWs, setLoadingMembersWs] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [deletingWsId, setDeletingWsId] = useState<string | null>(null);
+
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadWorkspaces = async () => {
@@ -36,14 +57,33 @@ export const WorkspaceModal: React.FC = () => {
     try {
       const list = await workspaceService.listWorkspaces();
       setWorkspaces(list);
-      if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
-        setActiveRepoId(list[0].repos[0].id);
-        setActiveRepoFullName(list[0].repos[0].fullName);
+      const allRepos = list.flatMap((w) => w.repos);
+      const currentExists = activeRepoId && allRepos.some((r) => r.id === activeRepoId);
+      if (!currentExists) {
+        if (allRepos.length > 0) {
+          setActiveRepoId(allRepos[0].id);
+          setActiveRepoFullName(allRepos[0].fullName);
+        } else {
+          setActiveRepoId(null);
+          setActiveRepoFullName('Sin repositorio');
+        }
       }
     } catch (err: any) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadWorkspaceMembers = async (wsId: string) => {
+    setLoadingMembersWs(wsId);
+    try {
+      const members = await workspaceService.listWorkspaceMembers(wsId);
+      setMembersByWs((prev) => ({ ...prev, [wsId]: members }));
+    } catch (err: any) {
+      console.warn('Error cargando miembros:', err);
+    } finally {
+      setLoadingMembersWs(null);
     }
   };
 
@@ -60,6 +100,66 @@ export const WorkspaceModal: React.FC = () => {
 
   if (!isWorkspaceModalOpen) return null;
 
+  const handleToggleMembers = async (wsId: string) => {
+    if (selectedWsForMembers === wsId) {
+      setSelectedWsForMembers(null);
+      return;
+    }
+    setSelectedWsForMembers(wsId);
+    await loadWorkspaceMembers(wsId);
+  };
+
+  const handleRemoveMember = async (wsId: string, member: WorkspaceMemberInfo) => {
+    if (!window.confirm(`¿Eliminar a '${member.email}' del equipo de este workspace?`)) return;
+    setRemovingMemberId(member.userId);
+    setStatusMsg(null);
+    try {
+      await workspaceService.removeMember(wsId, member.userId);
+      setMembersByWs((prev) => ({
+        ...prev,
+        [wsId]: (prev[wsId] || []).filter((m) => m.userId !== member.userId)
+      }));
+      setStatusMsg({ type: 'success', text: `✓ Miembro '${member.email}' eliminado del workspace.` });
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Error al eliminar miembro' });
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  const handleDeleteWorkspace = async (ws: WorkspaceSummary) => {
+    if (!window.confirm(`¿Eliminar el workspace '${ws.name}' y sus repositorios vinculados? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    setDeletingWsId(ws.id);
+    setStatusMsg(null);
+    try {
+      await workspaceService.deleteWorkspace(ws.id);
+      const remainingList = await workspaceService.listWorkspaces();
+      setWorkspaces(remainingList);
+
+      const deletedRepoIds = new Set(ws.repos.map((r) => r.id));
+      if (activeRepoId && deletedRepoIds.has(activeRepoId)) {
+        const nextRepo = remainingList.flatMap((w) => w.repos)[0];
+        if (nextRepo) {
+          setActiveRepoId(nextRepo.id);
+          setActiveRepoFullName(nextRepo.fullName);
+        } else {
+          setActiveRepoId(null);
+          setActiveRepoFullName('Sin repositorio');
+        }
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
+      await queryClient.invalidateQueries({ queryKey: ['issues'] });
+      setStatusMsg({ type: 'success', text: `✓ Workspace '${ws.name}' eliminado de Supabase Cloud.` });
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Error al eliminar workspace' });
+    } finally {
+      setDeletingWsId(null);
+    }
+  };
+
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMsg(null);
@@ -70,11 +170,13 @@ export const WorkspaceModal: React.FC = () => {
 
     try {
       const createdRepoId = await workspaceService.createWorkspace(newWsName, newRepoFullName);
-      setStatusMsg({ type: 'success', text: `¡Workspace y Repositorio creados en la BD de boxtools!` });
+      setStatusMsg({ type: 'success', text: `¡Workspace y Repositorio creados en Supabase!` });
       setNewWsName('');
+      setNewRepoFullName('');
       setActiveRepoId(createdRepoId);
       setActiveRepoFullName(newRepoFullName);
       await loadWorkspaces();
+      queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
       queryClient.invalidateQueries({ queryKey: ['issues'] });
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al crear workspace' });
@@ -91,6 +193,9 @@ export const WorkspaceModal: React.FC = () => {
       setStatusMsg({ type: 'success', text: `¡Invitación enviada a ${inviteEmail} con rol ${inviteRole}!` });
       setInviteEmail('');
       setSelectedWsForInvite(null);
+      if (selectedWsForMembers === wsId) {
+        await loadWorkspaceMembers(wsId);
+      }
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al invitar miembro' });
     }
@@ -167,92 +272,188 @@ export const WorkspaceModal: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {workspaces.map((ws) => (
-                      <div
-                        key={ws.id}
-                        className="p-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border flex flex-col gap-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-text-primary dark:text-dark-text">{ws.name}</span>
-                            <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-surface border border-border-subtle text-brand">
-                              {ws.role}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedWsForInvite(selectedWsForInvite === ws.id ? null : ws.id)}
-                            className="text-brand dark:text-dark-brand hover:underline text-[11px] font-semibold flex items-center gap-1"
-                          >
-                            <Users className="w-3 h-3" /> Invitar compañero
-                          </button>
-                        </div>
+                    {workspaces.map((ws) => {
+                      const isOwnerOrAdmin = ws.role === 'owner' || ws.role === 'admin';
+                      const wsMembers = membersByWs[ws.id] || [];
+                      const isMembersOpen = selectedWsForMembers === ws.id;
 
-                        {/* Linked Repos */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {ws.repos.map((repo) => {
-                            const isSelected = activeRepoId === repo.id;
-                            return (
-                              <button
-                                key={repo.id}
-                                type="button"
-                                onClick={() => {
-                                  setActiveRepoId(repo.id);
-                                  setActiveRepoFullName(repo.fullName);
-                                  queryClient.invalidateQueries({ queryKey: ['issues'] });
-                                }}
-                                className={`px-2.5 py-1 rounded-md text-xs font-mono flex items-center gap-1.5 border transition-all ${
-                                  isSelected
-                                    ? 'bg-brand text-white border-brand shadow-sm font-bold'
-                                    : 'bg-surface dark:bg-dark-surface border-border-subtle text-text-secondary hover:text-text-primary'
-                                }`}
-                              >
-                                <GitBranch className="w-3 h-3" />
-                                <span>{repo.fullName}</span>
-                                {isSelected && <Check className="w-3 h-3" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Invite Form Accordion */}
-                        {selectedWsForInvite === ws.id && (
-                          <form
-                            onSubmit={(e) => handleInvite(e, ws.id)}
-                            className="p-2.5 mt-1 rounded bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border flex flex-col gap-2 animate-in fade-in duration-150"
-                          >
-                            <span className="font-semibold text-[11px] text-text-primary dark:text-dark-text">
-                              Invitar a un colaborador al workspace
-                            </span>
-                            <div className="flex gap-2">
-                              <input
-                                type="email"
-                                required
-                                value={inviteEmail}
-                                onChange={(e) => setInviteEmail(e.target.value)}
-                                placeholder="companero@ejemplo.com"
-                                className="flex-1 bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2.5 py-1 text-xs outline-none focus:border-brand"
-                              />
-                              <select
-                                value={inviteRole}
-                                onChange={(e) => setInviteRole(e.target.value as any)}
-                                className="bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2 py-1 text-xs outline-none focus:border-brand"
-                              >
-                                <option value="developer">Developer</option>
-                                <option value="admin">Admin</option>
-                                <option value="viewer">Viewer</option>
-                              </select>
-                              <button
-                                type="submit"
-                                className="px-3 py-1 rounded bg-brand text-white font-bold text-xs shadow-sm hover:bg-brand-hover"
-                              >
-                                Invitar
-                              </button>
+                      return (
+                        <div
+                          key={ws.id}
+                          className="p-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border flex flex-col gap-2"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-text-primary dark:text-dark-text">{ws.name}</span>
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-brand">
+                                {ws.role}
+                              </span>
                             </div>
-                          </form>
-                        )}
-                      </div>
-                    ))}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleMembers(ws.id)}
+                                className={`text-[11px] font-semibold flex items-center gap-1 px-2 py-0.5 rounded border transition-colors ${
+                                  isMembersOpen
+                                    ? 'bg-brand/10 border-brand text-brand'
+                                    : 'border-border-subtle text-text-secondary hover:text-brand bg-surface dark:bg-dark-surface'
+                                }`}
+                                title="Ver o eliminar miembros del equipo"
+                              >
+                                <Users className="w-3 h-3" />
+                                <span>Miembros</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedWsForInvite(selectedWsForInvite === ws.id ? null : ws.id)}
+                                className="text-brand dark:text-dark-brand hover:underline text-[11px] font-semibold flex items-center gap-1"
+                              >
+                                <UserPlus className="w-3 h-3" /> Invitar compañero
+                              </button>
+
+                              {ws.role === 'owner' && (
+                                <button
+                                  type="button"
+                                  disabled={deletingWsId === ws.id}
+                                  onClick={() => handleDeleteWorkspace(ws)}
+                                  className="p-1 rounded text-text-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-50"
+                                  title={`Eliminar workspace ${ws.name}`}
+                                >
+                                  {deletingWsId === ws.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Linked Repos */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {ws.repos.length > 0 ? (
+                              ws.repos.map((repo) => {
+                                const isSelected = activeRepoId === repo.id;
+                                return (
+                                  <button
+                                    key={repo.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveRepoId(repo.id);
+                                      setActiveRepoFullName(repo.fullName);
+                                      queryClient.invalidateQueries({ queryKey: ['issues'] });
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-mono flex items-center gap-1.5 border transition-all ${
+                                      isSelected
+                                        ? 'bg-brand text-white border-brand shadow-sm font-bold'
+                                        : 'bg-surface dark:bg-dark-surface border-border-subtle text-text-secondary hover:text-text-primary'
+                                    }`}
+                                  >
+                                    <GitBranch className="w-3 h-3" />
+                                    <span>{repo.fullName}</span>
+                                    {isSelected && <Check className="w-3 h-3" />}
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <span className="text-[11px] text-text-muted italic">
+                                Sin repositorio vinculado
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Workspace Members List Accordion */}
+                          {isMembersOpen && (
+                            <div className="p-2.5 mt-1 rounded bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border flex flex-col gap-1.5 animate-in fade-in duration-150">
+                              <span className="font-semibold text-[11px] text-text-primary dark:text-dark-text flex items-center justify-between">
+                                <span>Equipo del Workspace ({wsMembers.length})</span>
+                                {loadingMembersWs === ws.id && <Loader2 className="w-3 h-3 animate-spin text-brand" />}
+                              </span>
+
+                              {loadingMembersWs === ws.id && wsMembers.length === 0 ? (
+                                <span className="text-[11px] text-text-muted">Cargando miembros...</span>
+                              ) : wsMembers.length === 0 ? (
+                                <span className="text-[11px] text-text-muted">No se encontraron miembros.</span>
+                              ) : (
+                                <div className="divide-y divide-border-subtle dark:divide-dark-border">
+                                  {wsMembers.map((member) => (
+                                    <div key={member.id} className="py-1.5 flex items-center justify-between gap-2">
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="font-semibold text-text-primary dark:text-dark-text truncate">
+                                          {member.name}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-text-muted truncate">
+                                          {member.email}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-text-secondary uppercase">
+                                          {member.role}
+                                        </span>
+                                        {isOwnerOrAdmin && member.role !== 'owner' && (
+                                          <button
+                                            type="button"
+                                            disabled={removingMemberId === member.userId}
+                                            onClick={() => handleRemoveMember(ws.id, member)}
+                                            className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-50"
+                                            title={`Eliminar a ${member.email} del workspace`}
+                                          >
+                                            {removingMemberId === member.userId ? (
+                                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                              <UserMinus className="w-3.5 h-3.5" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Invite Form Accordion */}
+                          {selectedWsForInvite === ws.id && (
+                            <form
+                              onSubmit={(e) => handleInvite(e, ws.id)}
+                              className="p-2.5 mt-1 rounded bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border flex flex-col gap-2 animate-in fade-in duration-150"
+                            >
+                              <span className="font-semibold text-[11px] text-text-primary dark:text-dark-text">
+                                Invitar a un colaborador al workspace
+                              </span>
+                              <div className="flex gap-2">
+                                <input
+                                  type="email"
+                                  required
+                                  value={inviteEmail}
+                                  onChange={(e) => setInviteEmail(e.target.value)}
+                                  placeholder="companero@ejemplo.com"
+                                  className="flex-1 bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2.5 py-1 text-xs outline-none focus:border-brand"
+                                />
+                                <select
+                                  value={inviteRole}
+                                  onChange={(e) => setInviteRole(e.target.value as any)}
+                                  className="bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2 py-1 text-xs outline-none focus:border-brand"
+                                >
+                                  <option value="developer">Developer</option>
+                                  <option value="admin">Admin</option>
+                                  <option value="viewer">Viewer</option>
+                                </select>
+                                <button
+                                  type="submit"
+                                  className="px-3 py-1 rounded bg-brand text-white font-bold text-xs shadow-sm hover:bg-brand-hover"
+                                >
+                                  Invitar
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -321,7 +522,7 @@ export const WorkspaceModal: React.FC = () => {
                       required
                       value={newRepoFullName}
                       onChange={(e) => setNewRepoFullName(e.target.value)}
-                      placeholder="tincho/hyper-flow"
+                      placeholder="usuario/repositorio"
                       className="w-full bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border rounded px-2.5 py-1.5 text-xs outline-none focus:border-brand font-mono"
                     />
                   </div>
@@ -341,4 +542,3 @@ export const WorkspaceModal: React.FC = () => {
     </div>
   );
 };
-

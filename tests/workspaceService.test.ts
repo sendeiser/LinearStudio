@@ -120,5 +120,48 @@ describe('WorkspaceService', () => {
     expect(resetCall).toBeDefined();
     expect(resetCall?.args[0]).toBe('user@linear.studio');
   });
+
+  it('should list workspace members via ls_list_workspace_members RPC', async () => {
+    const { client, calls } = mockClient({
+      'rpc:ls_list_workspace_members': {
+        data: [
+          { id: 'm1', user_id: 'u1', email: 'owner@test.com', name: 'Owner', role: 'owner', joined_at: '2026-11-11' },
+          { id: 'm2', user_id: 'u2', email: 'dev@test.com', name: 'Dev', role: 'developer', joined_at: '2026-11-11' }
+        ],
+        error: null
+      }
+    });
+    const service = new WorkspaceService(client);
+    const members = await service.listWorkspaceMembers('ws-uuid-1');
+
+    expect(members).toHaveLength(2);
+    expect(members[1].email).toBe('dev@test.com');
+    const rpcCall = calls.find(c => c.method === 'rpc:ls_list_workspace_members');
+    expect(rpcCall?.args[0]).toEqual({ p_workspace: 'ws-uuid-1' });
+  });
+
+  it('should remove a workspace member via ls_remove_workspace_member RPC', async () => {
+    const { client, calls } = mockClient({
+      'rpc:ls_remove_workspace_member': { data: null, error: null }
+    });
+    const service = new WorkspaceService(client);
+    await service.removeMember('ws-uuid-1', 'u2');
+
+    const rpcCall = calls.find(c => c.method === 'rpc:ls_remove_workspace_member');
+    expect(rpcCall).toBeDefined();
+    expect(rpcCall?.args[0]).toEqual({ p_workspace: 'ws-uuid-1', p_target_user_id: 'u2' });
+  });
+
+  it('should delete a workspace via ls_delete_workspace RPC', async () => {
+    const { client, calls } = mockClient({
+      'rpc:ls_delete_workspace': { data: null, error: null }
+    });
+    const service = new WorkspaceService(client);
+    await service.deleteWorkspace('ws-uuid-1');
+
+    const rpcCall = calls.find(c => c.method === 'rpc:ls_delete_workspace');
+    expect(rpcCall).toBeDefined();
+    expect(rpcCall?.args[0]).toEqual({ p_workspace: 'ws-uuid-1' });
+  });
 });
 

@@ -86,7 +86,7 @@ export const useStore = create<AppState>((set) => ({
   setCurrentUserEmail: (email) => set({ currentUserEmail: email }),
   userRole: 'admin',
   setUserRole: (role) => set({ userRole: role }),
-  activeRepoFullName: 'tincho/hyper-flow',
+  activeRepoFullName: 'Sin repositorio',
   setActiveRepoFullName: (name) => set({ activeRepoFullName: name }),
   activeRepoId: null,
   setActiveRepoId: (id) => set({ activeRepoId: id }),
