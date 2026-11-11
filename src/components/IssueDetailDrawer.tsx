@@ -343,27 +343,27 @@ export const IssueDetailDrawer: React.FC = () => {
   return (
     <aside 
       data-testid="issue-detail-drawer"
-      className="fixed inset-y-0 right-0 z-50 w-full sm:w-[520px] bg-surface dark:bg-dark-surface border-l border-border-subtle dark:border-dark-border flex flex-col shadow-flyout transform translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0"
+      className="fixed inset-y-0 right-0 z-50 w-full sm:w-[520px] h-[100dvh] md:h-auto bg-surface dark:bg-dark-surface border-l border-border-subtle dark:border-dark-border flex flex-col shadow-flyout transform translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0"
     >
       {/* Header */}
-      <div className="h-14 px-4 bg-surface-subtle dark:bg-dark-surface-elevated border-b border-border-subtle dark:border-dark-border flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-xs text-text-secondary dark:text-dark-text-muted truncate max-w-[140px]">
+      <div className="h-14 px-3 sm:px-4 gap-2 bg-surface-subtle dark:bg-dark-surface-elevated border-b border-border-subtle dark:border-dark-border flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-mono text-xs text-text-secondary dark:text-dark-text-muted truncate max-w-[95px] sm:max-w-[140px]">
             {activeRepoFullName || 'repositorio'}
           </span>
-          <span className="text-text-muted">/</span>
-          <span className="font-mono text-xs text-brand dark:text-dark-brand font-bold">
+          <span className="text-text-muted shrink-0">/</span>
+          <span className="font-mono text-xs text-brand dark:text-dark-brand font-bold shrink-0">
             #{selectedIssue.id}
           </span>
           {isAdmin && (
-            <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-mono text-[9px] font-bold border border-purple-200 dark:border-purple-800 items-center gap-1">
+            <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-mono text-[9px] font-bold border border-purple-200 dark:border-purple-800 items-center gap-1 shrink-0">
               <Shield className="w-2.5 h-2.5" /> ADMIN
             </span>
           )}
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {isAdmin && !isEditing && (
             <>
               <button
@@ -452,7 +452,7 @@ export const IssueDetailDrawer: React.FC = () => {
 
       {/* Drawer Body: Modo Edición vs Modo Vista */}
       {isEditing ? (
-        <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 text-xs animate-in fade-in duration-150">
+        <form onSubmit={handleSaveEdit} className="flex-1 min-h-0 overflow-y-auto touch-pan-y p-4 pb-16 md:pb-4 flex flex-col gap-3 text-xs animate-in fade-in duration-150">
           <div className="flex items-center justify-between pb-2 border-b border-border-subtle dark:border-dark-border">
             <span className="font-bold text-xs text-brand dark:text-dark-brand flex items-center gap-1.5">
               <Edit3 className="w-4 h-4" /> Modificar Issue #{selectedIssue.id}
@@ -570,7 +570,10 @@ export const IssueDetailDrawer: React.FC = () => {
         </form>
       ) : (
         /* Modo Vista Normal */
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto touch-pan-y p-4 pb-16 md:pb-4 flex flex-col gap-4 text-xs"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {/* Title */}
           <h2 className="text-base font-bold text-text-primary dark:text-dark-text leading-snug">
             {selectedIssue.title}

@@ -5,12 +5,21 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    height: 100%;
+    overscroll-behavior-y: none;
+  }
   body {
     @apply bg-canvas text-text-primary font-sans antialiased overflow-x-hidden;
   }
   .dark body {
     @apply bg-dark-canvas text-dark-text;
   }
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Custom scrollbars */

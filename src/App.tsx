@@ -190,7 +190,7 @@ export const App: React.FC = () => {
           <>
             <MobileColTabs counts={counts} />
             <FilterBar />
-            <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
               <KanbanBoard issues={issues} />
               <IssueDetailDrawer />
             </div>
@@ -198,42 +198,42 @@ export const App: React.FC = () => {
         );
       case 'all_issues':
         return (
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
             <AllIssuesView issues={issues} />
             <IssueDetailDrawer />
           </div>
         );
       case 'sprints':
         return (
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
             <SprintsView issues={issues} />
             <IssueDetailDrawer />
           </div>
         );
       case 'team':
         return (
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
             <TeamWorkspaceView />
             <IssueDetailDrawer />
           </div>
         );
       case 'pull_requests':
         return (
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
             <PullRequestsView />
             <IssueDetailDrawer />
           </div>
         );
       case 'projects_triage':
         return (
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
             <MultiProjectTriageView issues={issues} />
             <IssueDetailDrawer />
           </div>
         );
       case 'settings':
         return (
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
             <SettingsView />
             <IssueDetailDrawer />
           </div>
@@ -261,12 +261,12 @@ export const App: React.FC = () => {
 
   // Panel principal autenticado
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-canvas dark:bg-dark-canvas text-text-primary dark:text-dark-text antialiased">
+    <div className="flex h-[100dvh] md:h-screen w-full overflow-hidden bg-canvas dark:bg-dark-canvas text-text-primary dark:text-dark-text antialiased">
       {/* Primary Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative">
         <Topbar />
         {renderActiveView()}
       </div>

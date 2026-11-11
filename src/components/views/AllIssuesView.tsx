@@ -107,7 +107,7 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
 
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-canvas dark:bg-dark-canvas overflow-hidden">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-canvas dark:bg-dark-canvas overflow-hidden">
       {/* View Header & Action Bar */}
       <div className="p-4 bg-surface dark:bg-dark-surface border-b border-border-subtle dark:border-dark-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <div>
@@ -134,8 +134,8 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
       </div>
 
       {/* Issues Table Container */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border-subtle dark:border-dark-border shadow-sm overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-auto p-3 md:p-4 pb-16 md:pb-4 touch-pan-y">
+        <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border-subtle dark:border-dark-border shadow-sm overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border-subtle dark:border-dark-border bg-surface-subtle/60 dark:bg-dark-surface-elevated/60 text-text-secondary dark:text-dark-text-muted font-bold text-[11px]">

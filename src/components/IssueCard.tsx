@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, GitPullRequest, ChevronLeft, ChevronRight, Trash2, Edit3 } from 'lucide-react';
 import { Draggable } from '@hello-pangea/dnd';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,6 +17,17 @@ const COLUMN_ORDER: ColumnId[] = ['backlog', 'todo', 'in_progress', 'in_review',
 
 export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
   const queryClient = useQueryClient();
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
   const { 
     selectedIssue, 
     setSelectedIssue, 
@@ -140,15 +151,17 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
   const completedCount = issue.subtasks.filter((s) => s.completed).length;
 
   return (
-    <Draggable draggableId={String(issue.id)} index={index}>
+    <Draggable draggableId={String(issue.id)} index={index} isDragDisabled={isMobile}>
       {(provided, snapshot) => (
         <article
           ref={provided.innerRef}
           {...provided.draggableProps}
-          {...provided.dragHandleProps}
+          {...(isMobile ? {} : provided.dragHandleProps)}
           data-testid="issue-card"
           onClick={() => setSelectedIssue(issue)}
-          className={`issue-card group p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated transition-colors duration-150 cursor-grab active:cursor-grabbing shadow-card border ${
+          className={`issue-card group p-3 rounded-lg bg-surface dark:bg-dark-surface-elevated transition-colors duration-150 shadow-card border ${
+            isMobile ? 'cursor-pointer touch-pan-y' : 'cursor-grab active:cursor-grabbing'
+          } ${
             snapshot.isDragging
               ? 'ring-2 ring-brand shadow-2xl rotate-1 z-50 bg-surface dark:bg-dark-surface'
               : isSelected

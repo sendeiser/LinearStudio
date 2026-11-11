@@ -120,7 +120,7 @@ export const TeamWorkspaceView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-canvas dark:bg-dark-canvas overflow-y-auto p-4 gap-4">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-canvas dark:bg-dark-canvas overflow-y-auto touch-pan-y p-4 pb-16 md:pb-4 gap-4">
       {/* Workspace Banner */}
       <div className="p-5 rounded-2xl bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">

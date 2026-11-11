@@ -75,9 +75,9 @@ export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreate
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border rounded-xl shadow-flyout overflow-hidden">
+      <div className="w-full max-w-lg max-h-[90dvh] flex flex-col bg-surface dark:bg-dark-surface border border-border-subtle dark:border-dark-border rounded-xl shadow-flyout overflow-hidden">
         {/* Header */}
-        <div className="h-12 px-4 bg-surface-subtle dark:bg-dark-surface-elevated border-b border-border-subtle dark:border-dark-border flex items-center justify-between">
+        <div className="h-12 px-4 bg-surface-subtle dark:bg-dark-surface-elevated border-b border-border-subtle dark:border-dark-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <PlusCircle className="w-4 h-4 text-brand dark:text-dark-brand" />
             <span className="font-bold text-xs text-text-primary dark:text-dark-text">
@@ -93,7 +93,7 @@ export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreate
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-3.5 text-xs overflow-y-auto flex-1 min-h-0 touch-pan-y">
           <div>
             <label className="block text-[11px] font-bold text-text-secondary dark:text-dark-text-muted mb-1">
               Título del Issue *

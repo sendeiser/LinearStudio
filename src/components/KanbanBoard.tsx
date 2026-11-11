@@ -118,7 +118,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ issues }) => {
     <DragDropContext onDragEnd={handleDragEnd}>
       <main 
         id="board-container" 
-        className="flex-1 overflow-y-auto md:overflow-y-hidden overflow-x-hidden md:overflow-x-auto p-3 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas dark:bg-dark-canvas touch-pan-y"
+        className="flex-1 min-h-0 overflow-y-auto md:overflow-y-hidden overflow-x-hidden md:overflow-x-auto p-3 pb-16 md:p-4 flex flex-col md:flex-row gap-3.5 bg-canvas dark:bg-dark-canvas touch-pan-y"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {COLUMNS.map((col) => {
           const colIssues = filteredIssues.filter((i) => i.status === col.id);
