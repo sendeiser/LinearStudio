@@ -36,7 +36,9 @@ export const App: React.FC = () => {
     setActiveRepoId,
     setActiveRepoFullName,
     currentUserEmail,
-    setCurrentUserEmail
+    setCurrentUserEmail,
+    setGithubToken,
+    setGithubUser
   } = useStore();
 
   const [authChecked, setAuthChecked] = useState(false);
@@ -55,12 +57,19 @@ export const App: React.FC = () => {
     workspaceService.getCurrentUser().then((user) => {
       if (user?.email) {
         setCurrentUserEmail(user.email);
+        workspaceService.getUserGitHubIntegration().then((integration) => {
+          setGithubToken(integration.token);
+          setGithubUser(integration.user);
+        });
         workspaceService.listWorkspaces().then((list) => {
           if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
             setActiveRepoId(list[0].repos[0].id);
             setActiveRepoFullName(list[0].repos[0].fullName);
           }
         });
+      } else {
+        setGithubToken(null);
+        setGithubUser(null);
       }
       setAuthChecked(true);
     }).catch(() => {
@@ -71,12 +80,19 @@ export const App: React.FC = () => {
       const email = session?.user?.email || null;
       setCurrentUserEmail(email);
       if (email) {
+        workspaceService.getUserGitHubIntegration().then((integration) => {
+          setGithubToken(integration.token);
+          setGithubUser(integration.user);
+        });
         workspaceService.listWorkspaces().then((list) => {
           if (list.length > 0 && !activeRepoId && list[0].repos.length > 0) {
             setActiveRepoId(list[0].repos[0].id);
             setActiveRepoFullName(list[0].repos[0].fullName);
           }
         });
+      } else {
+        setGithubToken(null);
+        setGithubUser(null);
       }
       queryClient.invalidateQueries({ queryKey: ['issues'] });
     });
@@ -84,7 +100,7 @@ export const App: React.FC = () => {
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, [setCurrentUserEmail, activeRepoId, queryClient]);
+  }, [setCurrentUserEmail, activeRepoId, queryClient, setGithubToken, setGithubUser]);
 
   // Global keyboard shortcuts (C to create issue, Esc to close modal/drawer)
   useEffect(() => {

@@ -169,6 +169,147 @@ export class WorkspaceService {
     }
     return data as string;
   }
+
+  // --- GitHub Integrations (Per-User in Supabase DB) ---
+  public async getUserGitHubIntegration(): Promise<{ token: string | null; user: any | null }> {
+    const user = await this.getCurrentUser();
+    if (!user) return { token: null, user: null };
+
+    const { data, error } = await this.client
+      .from('ls_user_integrations')
+      .select('github_token, github_user')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error || !data) {
+      return { token: null, user: null };
+    }
+
+    return {
+      token: data.github_token || null,
+      user: data.github_user || null
+    };
+  }
+
+  public async saveUserGitHubIntegration(token: string | null, githubUser: any | null): Promise<void> {
+    const user = await this.getCurrentUser();
+    if (!user) throw new Error('Usuario no autenticado.');
+
+    const { error } = await this.client
+      .from('ls_user_integrations')
+      .upsert({
+        user_id: user.id,
+        github_token: token,
+        github_user: githubUser,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      throw new Error(`Error al guardar integración en Supabase: ${error.message}`);
+    }
+  }
+
+  public async clearUserGitHubIntegration(): Promise<void> {
+    const user = await this.getCurrentUser();
+    if (!user) return;
+
+    await this.client
+      .from('ls_user_integrations')
+      .delete()
+      .eq('user_id', user.id);
+  }
+
+  // --- Linked Repositories CRUD (For Triage Multi-Proyecto) ---
+  public async listLinkedRepositories(): Promise<Array<{
+    id: string;
+    workspaceId: string;
+    fullName: string;
+    defaultBranch: string;
+    isPrivate: boolean;
+  }>> {
+    const { data, error } = await this.client
+      .from('ls_linked_repositories')
+      .select('id, workspace_id, full_name, default_branch, is_private')
+      .order('created_at', { ascending: true });
+
+    if (error || !data) return [];
+    return data.map((r: any) => ({
+      id: r.id,
+      workspaceId: r.workspace_id,
+      fullName: r.full_name,
+      defaultBranch: r.default_branch || 'main',
+      isPrivate: Boolean(r.is_private)
+    }));
+  }
+
+  public async updateLinkedRepository(repoId: string, fullName: string, defaultBranch: string = 'main'): Promise<void> {
+    const { error } = await this.client
+      .from('ls_linked_repositories')
+      .update({
+        full_name: fullName.trim(),
+        default_branch: defaultBranch.trim() || 'main'
+      })
+      .eq('id', repoId);
+
+    if (error) {
+      throw new Error(`Error al actualizar repositorio: ${error.message}`);
+    }
+  }
+
+  public async deleteLinkedRepository(repoId: string): Promise<void> {
+    const { error } = await this.client
+      .from('ls_linked_repositories')
+      .delete()
+      .eq('id', repoId);
+
+    if (error) {
+      throw new Error(`Error al eliminar repositorio: ${error.message}`);
+    }
+  }
+
+  public async addLinkedRepository(fullName: string, defaultBranch: string = 'main'): Promise<string> {
+    const cleanName = fullName.trim();
+    if (!cleanName.includes('/')) {
+      throw new Error('El nombre del repositorio debe tener formato owner/repo (ej: sendeiser/LinearStudio)');
+    }
+
+    let wsId: string | null = null;
+    const workspaces = await this.listWorkspaces();
+    if (workspaces.length > 0) {
+      wsId = workspaces[0].id;
+    } else {
+      const { data: anyWs } = await this.client
+        .from('ls_workspaces')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+
+      if (anyWs?.id) {
+        wsId = anyWs.id;
+      } else {
+        const repoBase = cleanName.split('/')[1] || cleanName;
+        wsId = await this.createWorkspace(`${repoBase} Workspace`, cleanName);
+      }
+    }
+
+    const { data, error } = await this.client
+      .from('ls_linked_repositories')
+      .insert({
+        workspace_id: wsId,
+        github_repo_id: Math.floor(Math.random() * 100000000) + 1,
+        full_name: cleanName,
+        default_branch: defaultBranch.trim() || 'main',
+        is_private: false
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      throw new Error(`Error al vincular repositorio: ${error.message}`);
+    }
+
+    return data.id;
+  }
 }
 
 export const workspaceService = new WorkspaceService();

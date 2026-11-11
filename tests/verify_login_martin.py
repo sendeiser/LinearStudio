@@ -36,3 +36,4 @@ with sync_playwright() as p:
     screenshot_path = r"C:\Users\TinChoX\.gemini\antigravity\brain\a7df6650-86f3-4c14-aa43-f81f92cec3fd\dashboard-login-martin123.png"
     page.screenshot(path=screenshot_path)
     browser.close()
+

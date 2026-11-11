@@ -343,6 +343,32 @@ class DataService {
     this.persist();
     return newIssue;
   }
+
+  public deleteIssuesByProject(projectName: string): number {
+    const initialLen = this.issues.length;
+    this.issues = this.issues.filter(
+      (i) => (i.projectName || '').toLowerCase() !== projectName.toLowerCase()
+    );
+    this.persist();
+    return initialLen - this.issues.length;
+  }
+
+  public renameProjectInIssues(oldName: string, newName: string): number {
+    let count = 0;
+    this.issues = this.issues.map((i) => {
+      if ((i.projectName || '').toLowerCase() === oldName.toLowerCase()) {
+        count++;
+        return {
+          ...i,
+          projectName: newName,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return i;
+    });
+    this.persist();
+    return count;
+  }
 }
 
 export const dataService = new DataService();

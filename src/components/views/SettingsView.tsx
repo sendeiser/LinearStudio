@@ -121,6 +121,13 @@ export const SettingsView: React.FC = () => {
     }
   };
 
+  // Sincronizar input si el token cambia desde la base de datos de la sesión activa
+  useEffect(() => {
+    if (githubToken && !githubTokenInput) {
+      setGithubTokenInput(githubToken);
+    }
+  }, [githubToken]);
+
   // Validar y cargar repositorios en mount si el token ya está almacenado
   useEffect(() => {
     if (githubToken && !githubUser) {
@@ -147,14 +154,23 @@ export const SettingsView: React.FC = () => {
     setSyncStats(null);
 
     try {
-      const user = await githubService.validateToken(githubTokenInput.trim());
-      setGithubToken(githubTokenInput.trim());
+      const cleanToken = githubTokenInput.trim();
+      const user = await githubService.validateToken(cleanToken);
+      setGithubToken(cleanToken);
       setGithubUser(user);
+
+      // Persistir de forma segura y aislada en Supabase Cloud para este usuario
+      try {
+        await workspaceService.saveUserGitHubIntegration(cleanToken, user);
+      } catch (dbErr: any) {
+        console.warn('Aviso al guardar integración en Supabase Cloud:', dbErr);
+      }
+
       setFeedback({ 
         type: 'success', 
-        text: `✓ ¡GitHub vinculado con éxito como @${user.login} (${user.name || 'Usuario'})!` 
+        text: `✓ ¡GitHub vinculado con éxito como @${user.login} (${user.name || 'Usuario'}) y guardado en tu cuenta de Supabase!` 
       });
-      await loadUserRepos(githubTokenInput.trim());
+      await loadUserRepos(cleanToken);
     } catch (err: any) {
       setFeedback({ 
         type: 'error', 
@@ -165,14 +181,21 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const handleDisconnectGithub = () => {
+  const handleDisconnectGithub = async () => {
     setGithubToken(null);
     setGithubUser(null);
     setUserRepos([]);
     setSyncStats(null);
     setGithubTokenInput('');
     githubService.setToken('');
-    setFeedback({ type: 'success', text: 'Token de GitHub desconectado.' });
+
+    try {
+      await workspaceService.clearUserGitHubIntegration();
+    } catch (dbErr: any) {
+      console.warn('Aviso al limpiar integración en Supabase Cloud:', dbErr);
+    }
+
+    setFeedback({ type: 'success', text: 'Token de GitHub desconectado y eliminado de tu cuenta.' });
   };
 
   const handleSyncGithubIssues = async (repoToSyncOverride?: string) => {

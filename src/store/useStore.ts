@@ -87,14 +87,8 @@ export const useStore = create<AppState>((set) => ({
   setActiveRepoFullName: (name) => set({ activeRepoFullName: name }),
   activeRepoId: null,
   setActiveRepoId: (id) => set({ activeRepoId: id }),
-  githubToken: (typeof window !== 'undefined' && localStorage.getItem('github_token')) || null,
-  setGithubToken: (token) => {
-    if (typeof window !== 'undefined') {
-      if (token) localStorage.setItem('github_token', token);
-      else localStorage.removeItem('github_token');
-    }
-    set({ githubToken: token });
-  },
+  githubToken: null,
+  setGithubToken: (token) => set({ githubToken: token }),
   githubUser: null,
   setGithubUser: (user) => set({ githubUser: user }),
   antigravityState: {
