@@ -38,6 +38,20 @@ def run():
         time.sleep(1)
 
         if page.locator("text=Iniciar Sesión").is_visible():
+            print("1b. Verificando scroll táctil en Página Principal (LandingAuthPage)...")
+            landing_scroll_before = page.evaluate("() => window.scrollY")
+            landing_dims = page.evaluate("() => ({ inner: window.innerHeight, scroll: document.documentElement.scrollHeight })")
+            print(f"Landing antes de swipe -> scrollY: {landing_scroll_before}, dims: {landing_dims}")
+            touch_swipe_up(cdp, 195, 650, 150)
+            time.sleep(0.5)
+            landing_scroll_after = page.evaluate("() => window.scrollY")
+            print(f"Landing después de swipe táctil -> scrollY: {landing_scroll_after}")
+            assert landing_scroll_after > 150, f"La página principal (Landing) debe hacer scroll táctil en mobile (scrollY={landing_scroll_after})"
+
+            landing_shot = os.path.join(ARTIFACT_DIR, "mobile-landing-scrolled.png")
+            page.screenshot(path=landing_shot)
+            print(f"✓ Screenshot Landing mobile scrolled guardado en {landing_shot}")
+
             print("2. Iniciando sesión...")
             page.locator("button:has-text('Iniciar Sesión')").click()
             time.sleep(0.3)

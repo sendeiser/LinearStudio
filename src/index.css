@@ -6,11 +6,12 @@
 
 @layer base {
   html, body {
-    height: 100%;
-    overscroll-behavior-y: none;
+    min-height: 100%;
+    -webkit-overflow-scrolling: touch;
   }
   body {
-    @apply bg-canvas text-text-primary font-sans antialiased overflow-x-hidden;
+    @apply bg-canvas text-text-primary font-sans antialiased;
+    overflow-x: clip;
   }
   .dark body {
     @apply bg-dark-canvas text-dark-text;

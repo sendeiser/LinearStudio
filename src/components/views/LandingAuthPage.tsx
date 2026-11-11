@@ -200,7 +200,7 @@ export const LandingAuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-canvas dark:bg-dark-canvas text-text-primary dark:text-dark-text flex flex-col justify-between selection:bg-brand selection:text-white">
+    <div className="min-h-[100dvh] w-full bg-canvas dark:bg-dark-canvas text-text-primary dark:text-dark-text flex flex-col justify-between selection:bg-brand selection:text-white touch-pan-y">
       {/* Top Navbar */}
       <header className="w-full border-b border-border-subtle dark:border-dark-border bg-surface/80 dark:bg-dark-surface/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -234,7 +234,7 @@ export const LandingAuthPage: React.FC = () => {
       </header>
 
       {/* Main Hero & Auth Split */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-16 flex-1 flex flex-col lg:flex-row items-center justify-between gap-12">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-16 flex-1 flex flex-col lg:flex-row items-center justify-between gap-12">
         {/* Left: Value Proposition */}
         <div className="flex-1 flex flex-col gap-6 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 dark:bg-dark-brand/20 border border-brand/20 text-brand dark:text-dark-brand text-xs font-semibold w-fit">
