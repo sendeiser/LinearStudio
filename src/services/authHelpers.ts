@@ -38,6 +38,9 @@ export const friendlyAuthError = (message: string): string => {
   if (lower.includes('rate limit') || lower.includes('over_email_send_rate_limit')) {
     return 'Límite de envíos alcanzado por seguridad en Supabase. Espera 60 segundos antes de reintentar y revisa tu carpeta de Spam / Correo no deseado.';
   }
+  if (lower.includes('auth session missing') || lower.includes('session missing')) {
+    return 'No se detectó una sesión activa de recuperación. Por favor haz clic en "Iniciar Sesión" con tu contraseña o solicita un nuevo enlace.';
+  }
   return message;
 };
 

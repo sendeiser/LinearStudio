@@ -90,6 +90,10 @@ export const LandingAuthPage: React.FC = () => {
 
     setLoading(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        throw new Error('No se detectó una sesión activa de recuperación. Por favor haz clic en "Volver a Iniciar Sesión" para ingresar directamente con tu contraseña.');
+      }
       const user = await workspaceService.updatePassword(password);
       setSuccessMsg('✓ ¡Contraseña actualizada con éxito! Ingresando al panel...');
       setTimeout(() => {
@@ -607,6 +611,20 @@ export const LandingAuthPage: React.FC = () => {
                     </>
                   )}
                 </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('signin');
+                      setErrorMsg(null);
+                      setSuccessMsg(null);
+                    }}
+                    className="text-[11px] text-brand hover:underline font-semibold"
+                  >
+                    ← Volver a Iniciar Sesión
+                  </button>
+                </div>
               </form>
             )}
 
