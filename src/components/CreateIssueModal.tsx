@@ -3,9 +3,10 @@ import { PlusCircle, X } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { ColumnId, Priority } from '../types/issue';
 import { dataService } from '../services/dataService';
+import { getActiveIssueRepository } from '../services/issueRepository';
 
 export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreated }) => {
-  const { isCreateModalOpen, setIsCreateModalOpen } = useStore();
+  const { isCreateModalOpen, setIsCreateModalOpen, activeRepoId, currentUserEmail, userRole } = useStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
@@ -13,9 +14,21 @@ export const CreateIssueModal: React.FC<{ onCreated: () => void }> = ({ onCreate
 
   if (!isCreateModalOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.create({
+        title,
+        description,
+        priority,
+        status
+      });
+    } catch (err) {
+      console.warn('Notice al crear issue en Supabase:', err);
+    }
 
     dataService.createIssue({
       title,

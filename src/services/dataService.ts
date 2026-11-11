@@ -251,6 +251,72 @@ class DataService {
     return this.getIssueById(issueId);
   }
 
+  public updateIssue(issueId: number, updates: Partial<Issue>): Issue | undefined {
+    this.issues = this.issues.map((issue) => {
+      if (issue.id === issueId) {
+        return {
+          ...issue,
+          ...updates,
+          id: issue.id, // ID must remain immutable
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return issue;
+    });
+    this.persist();
+    return this.getIssueById(issueId);
+  }
+
+  public deleteIssue(issueId: number): boolean {
+    const initialLen = this.issues.length;
+    this.issues = this.issues.filter((issue) => issue.id !== issueId);
+    this.persist();
+    return this.issues.length < initialLen;
+  }
+
+  public addSubtask(issueId: number, title: string): Subtask | undefined {
+    const newSubtask: Subtask = {
+      id: `st_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      title: title.trim(),
+      completed: false
+    };
+
+    let created: Subtask | undefined;
+    this.issues = this.issues.map((issue) => {
+      if (issue.id === issueId) {
+        created = newSubtask;
+        return {
+          ...issue,
+          subtasks: [...issue.subtasks, newSubtask],
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return issue;
+    });
+
+    this.persist();
+    return created;
+  }
+
+  public deleteSubtask(issueId: number, subtaskId: string): boolean {
+    let removed = false;
+    this.issues = this.issues.map((issue) => {
+      if (issue.id === issueId) {
+        const filtered = issue.subtasks.filter((s) => s.id !== subtaskId);
+        if (filtered.length < issue.subtasks.length) removed = true;
+        return {
+          ...issue,
+          subtasks: filtered,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return issue;
+    });
+
+    this.persist();
+    return removed;
+  }
+
   public createIssue(data: { title: string; description: string; priority: Priority; status: ColumnId; projectName?: string }): Issue {
     const newId = Math.floor(Math.random() * 800) + 200;
     const newIssue: Issue = {

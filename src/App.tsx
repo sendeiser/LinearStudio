@@ -21,6 +21,7 @@ import { ColumnId } from './types/issue';
 import { supabase } from './lib/supabase';
 import { workspaceService } from './services/workspaceService';
 import { IssueRepository, SupabaseIssueRepository } from './services/issueRepository';
+import { dataService } from './services/dataService';
 
 export const App: React.FC = () => {
   const queryClient = useQueryClient();
@@ -120,15 +121,19 @@ export const App: React.FC = () => {
     });
   };
 
-  // Fetch issues via TanStack React Query from Supabase Cloud
+  // Fetch issues via TanStack React Query from Supabase Cloud (with dataService fallback)
   const { data: issues = [] } = useQuery({
     queryKey: ['issues', activeRepoId, currentUserEmail],
     queryFn: async () => {
       try {
-        return await getRepository().list();
+        const repoIssues = await getRepository().list();
+        if (repoIssues && repoIssues.length > 0) {
+          return repoIssues;
+        }
+        return dataService.getIssues();
       } catch (e) {
-        console.warn('Supabase fetch notice:', e);
-        return [];
+        console.warn('Supabase fetch notice, falling back to dataService:', e);
+        return dataService.getIssues();
       }
     }
   });

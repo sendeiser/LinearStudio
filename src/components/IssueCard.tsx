@@ -1,10 +1,11 @@
 import React from 'react';
-import { MessageSquare, GitPullRequest, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, GitPullRequest, ChevronLeft, ChevronRight, Trash2, Edit3 } from 'lucide-react';
 import { Draggable } from '@hello-pangea/dnd';
 import { useQueryClient } from '@tanstack/react-query';
 import { ColumnId, Issue } from '../types/issue';
 import { useStore } from '../store/useStore';
 import { dataService } from '../services/dataService';
+import { getActiveIssueRepository } from '../services/issueRepository';
 
 interface IssueCardProps {
   issue: Issue;
@@ -15,7 +16,7 @@ const COLUMN_ORDER: ColumnId[] = ['backlog', 'todo', 'in_progress', 'in_review',
 
 export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
   const queryClient = useQueryClient();
-  const { selectedIssue, setSelectedIssue } = useStore();
+  const { selectedIssue, setSelectedIssue, currentUserEmail, activeRepoId, userRole } = useStore();
   const isSelected = selectedIssue?.id === issue.id;
 
   const currentIdx = COLUMN_ORDER.indexOf(issue.status);
@@ -25,6 +26,20 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
   const handleMove = (e: React.MouseEvent, targetCol: ColumnId) => {
     e.stopPropagation();
     dataService.moveIssue(issue.id, targetCol);
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`¿Eliminar issue #${issue.id}?`)) return;
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.delete(issue.id);
+    } catch (err) {
+      console.warn('Notice al eliminar issue:', err);
+    }
+    dataService.deleteIssue(issue.id);
+    if (selectedIssue?.id === issue.id) setSelectedIssue(null);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
@@ -85,7 +100,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
             <div className="flex items-center gap-1">
               {getPriorityBadge()}
               
-              {/* Quick Move Buttons */}
+              {/* Quick Move & Admin Delete */}
               <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                 {prevCol && (
                   <button
@@ -104,6 +119,29 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, index }) => {
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
+                )}
+                {(userRole === 'admin' || userRole === 'owner') && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIssue(issue);
+                      }}
+                      className="p-0.5 rounded hover:bg-brand/10 text-text-muted hover:text-brand transition-colors ml-0.5"
+                      title="Editar issue (Admin)"
+                      aria-label="Editar issue"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="p-0.5 rounded hover:bg-red-500/10 text-text-muted hover:text-red-500 transition-colors ml-0.5"
+                      title="Eliminar issue (Admin)"
+                      aria-label="Eliminar issue"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
                 )}
               </div>
             </div>

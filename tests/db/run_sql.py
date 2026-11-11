@@ -8,7 +8,7 @@ import sys
 import urllib.error
 import urllib.request
 
-REF = "ydoviusjpgmjsxpspexu"
+REF = os.environ.get("SUPABASE_PROJECT_REF", "")
 
 
 def run(sql: str):

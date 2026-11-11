@@ -1,7 +1,7 @@
 # Linear Studio & Antigravity AI — ECC AgentShield Rules & Project Knowledge
 
 ## 1. Base de Datos Compartida (Supabase Cloud — boxtools)
-- Linear Studio comparte el proyecto de Supabase Cloud con `boxtools` (Project Ref: `ydoviusjpgmjsxpspexu`).
+- Linear Studio comparte el proyecto de Supabase Cloud con `boxtools`.
 - **Regla de Oro:** Todas las tablas, índices, enums y funciones creadas para Linear Studio DEBEN llevar el prefijo `ls_` (ej: `ls_workspaces`, `ls_linked_repositories`, `ls_issues`, `ls_subtasks`, `ls_comments`, `ls_user_role`).
 - Queda terminantemente prohibido modificar, renombrar o aplicar drops a las tablas nativas de `boxtools` (`categories`, `tools`, `combos`, `ai_settings`, `tool_media`).
 

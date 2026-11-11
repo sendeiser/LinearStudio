@@ -29,6 +29,8 @@ interface AppState {
   setDataMode: (mode: 'cloud') => void;
   currentUserEmail: string | null;
   setCurrentUserEmail: (email: string | null) => void;
+  userRole: 'owner' | 'admin' | 'developer' | 'viewer';
+  setUserRole: (role: 'owner' | 'admin' | 'developer' | 'viewer') => void;
   activeRepoFullName: string;
   setActiveRepoFullName: (name: string) => void;
   activeRepoId: string | null;
@@ -79,6 +81,8 @@ export const useStore = create<AppState>((set) => ({
   setDataMode: (_mode: 'cloud') => set({ dataMode: 'cloud' }),
   currentUserEmail: null,
   setCurrentUserEmail: (email) => set({ currentUserEmail: email }),
+  userRole: 'admin',
+  setUserRole: (role) => set({ userRole: role }),
   activeRepoFullName: 'tincho/hyper-flow',
   setActiveRepoFullName: (name) => set({ activeRepoFullName: name }),
   activeRepoId: null,

@@ -14,6 +14,7 @@ const fakeClient = (responses: Record<string, { data?: unknown; error?: { messag
         select: () => builder,
         insert: (p: unknown) => ((call.op = 'insert'), (call.payload = p), builder),
         update: (p: unknown) => ((call.op = 'update'), (call.payload = p), builder),
+        delete: () => ((call.op = 'delete'), builder),
         eq: (c: string, v: unknown) => (call.filters.push([c, v]), builder),
         order: () => builder,
         single: () => ((calls.push(call)), Promise.resolve({ error: null, ...result() })),
@@ -81,6 +82,41 @@ describe('SupabaseIssueRepository', () => {
     expect(upd.filters).toEqual([['id', 'sub-1']]);
   });
 
+  it('updates an issue with title and description', async () => {
+    const { client, calls } = fakeClient({});
+    await new SupabaseIssueRepository(client, 'r1', actor).update(5, {
+      title: 'Título Actualizado',
+      description: 'Nueva descripción',
+      priority: 'high'
+    });
+    const upd = calls.find((c) => c.op === 'update')!;
+    expect(upd.payload).toEqual({
+      title: 'Título Actualizado',
+      description: 'Nueva descripción',
+      priority: 'high'
+    });
+    expect(upd.filters).toEqual([['repository_id', 'r1'], ['number', 5]]);
+  });
+
+  it('deletes an issue scoped by repository and number', async () => {
+    const { client, calls } = fakeClient({});
+    await new SupabaseIssueRepository(client, 'r1', actor).delete(5);
+    const del = calls.find((c) => c.op === 'delete')!;
+    expect(del.filters).toEqual([['repository_id', 'r1'], ['number', 5]]);
+  });
+
+  it('adds a subtask and deletes a subtask', async () => {
+    const { client, calls } = fakeClient({ 'ls_issues:select': { data: { id: 'issue-uuid-1' } } });
+    const repo = new SupabaseIssueRepository(client, 'r1', actor);
+    await repo.addSubtask(5, 'Nueva subtarea');
+    const ins = calls.find((c) => c.table === 'ls_subtasks' && c.op === 'insert')!;
+    expect(ins.payload).toMatchObject({ issue_id: 'issue-uuid-1', title: 'Nueva subtarea', completed: false });
+
+    await repo.deleteSubtask(5, 'sub-to-delete');
+    const del = calls.find((c) => c.table === 'ls_subtasks' && c.op === 'delete')!;
+    expect(del.filters).toEqual([['id', 'sub-to-delete']]);
+  });
+
   it('throws a readable error when Supabase rejects the operation', async () => {
     const { client } = fakeClient({ 'ls_issues:update': { error: { message: 'new row violates row-level security policy' } } });
     await expect(new SupabaseIssueRepository(client, 'r1', actor).move(5, 'done')).rejects.toThrow(/row-level security/);
@@ -97,6 +133,14 @@ describe('LocalIssueRepository', () => {
     expect(after[0].title).toBe('Local nuevo');
     await repo.setPriority(after[0].id, 'urgent');
     expect((await repo.list())[0].priority).toBe('urgent');
+
+    await repo.update(after[0].id, { title: 'Local modificado', description: 'desc' });
+    const modified = (await repo.list()).find((i) => i.id === after[0].id);
+    expect(modified?.title).toBe('Local modificado');
+
+    await repo.delete(after[0].id);
+    const afterDelete = await repo.list();
+    expect(afterDelete.find((i) => i.id === after[0].id)).toBeUndefined();
   });
 });
 

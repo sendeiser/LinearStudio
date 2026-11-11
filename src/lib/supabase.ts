@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Base de datos compartida con boxtools (proyecto ydoviusjpgmjsxpspexu).
-// Las credenciales viven SOLO en .env.local (ignorado por git); nunca se hardcodean.
+// Base de datos compartida con boxtools.
+// Las credenciales viven SOLO en variables de entorno; nunca se hardcodean.
 const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
 
 const SUPABASE_URL: string =

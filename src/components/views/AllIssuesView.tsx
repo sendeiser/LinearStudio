@@ -8,12 +8,15 @@ import {
   Circle, 
   Eye, 
   TrendingUp,
-  GitPullRequest
+  GitPullRequest,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Issue, ColumnId, Priority } from '../../types/issue';
 import { useStore } from '../../store/useStore';
 import { dataService } from '../../services/dataService';
+import { getActiveIssueRepository } from '../../services/issueRepository';
 
 export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
   const queryClient = useQueryClient();
@@ -22,7 +25,10 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
     setIsCreateModalOpen, 
     dispatchAntigravity,
     searchQuery,
-    activeFilter
+    activeFilter,
+    currentUserEmail,
+    activeRepoId,
+    userRole
   } = useStore();
 
   const [sortField, setSortField] = useState<'id' | 'priority' | 'updatedAt'>('id');
@@ -67,6 +73,21 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
   const handleStatusChange = (e: React.MouseEvent, issueId: number, newStatus: ColumnId) => {
     e.stopPropagation();
     dataService.moveIssue(issueId, newStatus);
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+  };
+
+  const handleDeleteIssue = async (e: React.MouseEvent, issueId: number) => {
+    e.stopPropagation();
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar permanentemente el Issue #${issueId}?`)) {
+      return;
+    }
+    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+    try {
+      await repo.delete(issueId);
+    } catch (err) {
+      console.warn('Notice al eliminar issue en Supabase:', err);
+    }
+    dataService.deleteIssue(issueId);
     queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
@@ -220,18 +241,37 @@ export const AllIssuesView: React.FC<{ issues: Issue[] }> = ({ issues }) => {
                     </td>
 
                     <td className="py-3 px-3 text-right whitespace-nowrap">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedIssue(issue);
-                          dispatchAntigravity(issue);
-                        }}
-                        className="py-1 px-2.5 rounded-md bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-[11px] inline-flex items-center gap-1 transition-colors"
-                        title="Resolver con Antigravity AI Agent"
-                      >
-                        <Sparkles className="w-3 h-3 text-purple-500" />
-                        <span>Resolver</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIssue(issue);
+                          }}
+                          className="p-1 rounded hover:bg-surface-subtle text-text-muted hover:text-brand transition-colors"
+                          title="Editar issue (CRUD)"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteIssue(e, issue.id)}
+                          className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-text-muted hover:text-rose-600 transition-colors"
+                          title="Eliminar issue (CRUD)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIssue(issue);
+                            dispatchAntigravity(issue);
+                          }}
+                          className="py-1 px-2.5 rounded-md bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-[11px] inline-flex items-center gap-1 transition-colors"
+                          title="Resolver con Antigravity AI Agent"
+                        >
+                          <Sparkles className="w-3 h-3 text-purple-500" />
+                          <span>Resolver</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

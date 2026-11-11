@@ -69,5 +69,48 @@ describe('DataService Functional Core', () => {
     const issues = dataService.getIssues();
     expect(issues[0].title).toBe('TDD Test Issue Creation');
   });
+
+  it('should update and delete an issue cleanly', () => {
+    const issue = dataService.createIssue({
+      title: 'Issue to update',
+      description: 'Original description',
+      priority: 'low',
+      status: 'backlog'
+    });
+
+    const updated = dataService.updateIssue(issue.id, {
+      title: 'Issue title modified',
+      description: 'New desc',
+      priority: 'urgent'
+    });
+
+    expect(updated?.title).toBe('Issue title modified');
+    expect(updated?.priority).toBe('urgent');
+
+    const deleted = dataService.deleteIssue(issue.id);
+    expect(deleted).toBe(true);
+    expect(dataService.getIssueById(issue.id)).toBeUndefined();
+  });
+
+  it('should add and delete subtasks', () => {
+    const issue = dataService.createIssue({
+      title: 'Issue with subtasks',
+      description: 'desc',
+      priority: 'medium',
+      status: 'todo'
+    });
+
+    const subtask = dataService.addSubtask(issue.id, 'Nueva subtarea creada');
+    expect(subtask?.title).toBe('Nueva subtarea creada');
+    expect(subtask?.completed).toBe(false);
+
+    const reloaded = dataService.getIssueById(issue.id);
+    expect(reloaded?.subtasks.some((s) => s.id === subtask?.id)).toBe(true);
+
+    const removed = dataService.deleteSubtask(issue.id, subtask!.id);
+    expect(removed).toBe(true);
+    const afterDelete = dataService.getIssueById(issue.id);
+    expect(afterDelete?.subtasks.some((s) => s.id === subtask?.id)).toBe(false);
+  });
 });
 

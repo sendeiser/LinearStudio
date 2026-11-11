@@ -1,7 +1,7 @@
 -- =============================================================================
 -- MIGRATION: Linear Studio (GitHub Projects + Antigravity AI)
 -- Version: 1.3.0
--- Base de datos COMPARTIDA con boxtools (proyecto ydoviusjpgmjsxpspexu).
+-- Base de datos COMPARTIDA con boxtools.
 -- Todas las tablas y tipos usan el prefijo ls_ para no colisionar con boxtools
 -- (categories, tools, tool_media, combos, combo_tools, ai_settings).
 -- Esta migracion NO toca ninguna tabla de boxtools.
