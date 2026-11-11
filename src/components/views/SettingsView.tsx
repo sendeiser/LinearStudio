@@ -379,12 +379,12 @@ export const SettingsView: React.FC = () => {
           <div className="flex flex-col gap-2.5 text-xs">
             <div className="p-3 rounded-lg bg-surface-subtle dark:bg-dark-surface-elevated border border-border-subtle flex flex-col gap-1.5 font-mono text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="text-text-muted">Project Ref:</span>
-                <span className="font-bold text-brand">ydoviusjpgmjsxpspexu</span>
+                <span className="text-text-muted">Servidor Cloud:</span>
+                <span className="font-bold text-brand">Supabase Cloud (boxtools)</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-text-muted">Host:</span>
-                <span className="truncate max-w-[200px] text-text-secondary">https://ydoviusjpgmjsxpspexu.supabase.co</span>
+                <span className="text-text-muted">Estado de Conexión:</span>
+                <span className="text-emerald-600 font-bold">En línea</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-text-muted">Seguridad RLS:</span>

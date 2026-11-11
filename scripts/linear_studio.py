@@ -31,7 +31,7 @@ def load_env():
     return env
 
 ENV = load_env()
-SUPABASE_URL = ENV.get("VITE_SUPABASE_URL", "https://ydoviusjpgmjsxpspexu.supabase.co")
+SUPABASE_URL = ENV.get("VITE_SUPABASE_URL", os.environ.get("VITE_SUPABASE_URL", ""))
 SERVICE_KEY = ENV.get("SUPABASE_SERVICE_ROLE_KEY", "")
 ANON_KEY = ENV.get("VITE_SUPABASE_ANON_KEY", "")
 API_KEY = SERVICE_KEY if SERVICE_KEY else ANON_KEY

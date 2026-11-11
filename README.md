@@ -98,7 +98,7 @@ El repositorio ya incluye `netlify.toml` y `public/_redirects` optimizados para 
    - **Build command:** `npm run build`
    - **Publish directory:** `dist`
 3. **Variables de Entorno (Site configuration > Environment variables):**
-   - `VITE_SUPABASE_URL`: `https://ydoviusjpgmjsxpspexu.supabase.co`
+   - `VITE_SUPABASE_URL`: (tu URL de Supabase Cloud)
    - `VITE_SUPABASE_ANON_KEY`: (tu llave pública anon de Supabase)
    - `VITE_GITHUB_TOKEN`: (opcional)
 

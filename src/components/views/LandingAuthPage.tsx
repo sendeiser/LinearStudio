@@ -452,7 +452,7 @@ export const LandingAuthPage: React.FC = () => {
       {/* Footer */}
       <footer className="w-full border-t border-border-subtle dark:border-dark-border py-4 text-center text-xs text-text-secondary dark:text-dark-text-muted">
         <p>
-          Linear Studio • Conectado a Supabase Cloud Project <code className="font-mono text-brand">ydoviusjpgmjsxpspexu</code> (boxtools)
+          Linear Studio • Conectado a Supabase Cloud (boxtools)
         </p>
       </footer>
     </div>
