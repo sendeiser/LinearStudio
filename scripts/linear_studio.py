@@ -466,6 +466,43 @@ def cmd_github_sync(args):
     else:
         print(f"✓ Descargados {len(pure_issues)} issues de GitHub.\n")
 
+def cmd_reset_user_password(args):
+    email = args.email.strip()
+    password = args.password.strip()
+    if len(password) < 6:
+        print("[Error]: La contraseña debe tener al menos 6 caracteres.", file=sys.stderr)
+        sys.exit(1)
+
+    if not SERVICE_KEY:
+        print("[Error]: SUPABASE_SERVICE_ROLE_KEY no está definida en .env.local", file=sys.stderr)
+        sys.exit(1)
+
+    users_resp = supabase_request("auth/v1/admin/users", method="GET")
+    if not users_resp or "users" not in users_resp:
+        print("[Error]: No se pudo listar usuarios desde Supabase Auth.", file=sys.stderr)
+        sys.exit(1)
+
+    target_user = None
+    for u in users_resp["users"]:
+        if u.get("email", "").lower() == email.lower():
+            target_user = u
+            break
+
+    if not target_user:
+        print(f"[Error]: Usuario con email '{email}' no encontrado en Supabase Auth.", file=sys.stderr)
+        sys.exit(1)
+
+    user_id = target_user["id"]
+    update_data = {
+        "password": password,
+        "email_confirm": True
+    }
+    res = supabase_request(f"auth/v1/admin/users/{user_id}", method="PUT", data=update_data)
+    if res:
+        print(f"✓ Contraseña actualizada exitosamente para '{email}' (ID: {user_id})")
+    else:
+        print(f"[Error]: No se pudo actualizar la contraseña para '{email}'.", file=sys.stderr)
+
 def main():
     parser = argparse.ArgumentParser(description="Linear Studio & Antigravity Issue Bridge")
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
@@ -512,6 +549,11 @@ def main():
     p_gh_sync.add_argument("--repo", required=True, help="Repositorio (owner/repo)")
     p_gh_sync.add_argument("--token", help="Token PAT opcional")
 
+    # reset-user-password
+    p_reset_pwd = subparsers.add_parser("reset-user-password", help="Restablecer directamente la contraseña de un usuario en Supabase Auth")
+    p_reset_pwd.add_argument("--email", "-e", required=True, help="Email del usuario")
+    p_reset_pwd.add_argument("--password", "-p", required=True, help="Nueva contraseña")
+
     args = parser.parse_args()
 
     if args.command == "list-projects":
@@ -530,6 +572,8 @@ def main():
         cmd_set_github_token(args)
     elif args.command == "github-sync":
         cmd_github_sync(args)
+    elif args.command == "reset-user-password":
+        cmd_reset_user_password(args)
     else:
         parser.print_help()
 

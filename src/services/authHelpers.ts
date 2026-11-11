@@ -35,6 +35,9 @@ export const friendlyAuthError = (message: string): string => {
   if (lower.includes('reauthentication') || lower.includes('requires recent login')) {
     return 'Por seguridad, debes haber iniciado sesión recientemente para actualizar tu contraseña.';
   }
+  if (lower.includes('rate limit') || lower.includes('over_email_send_rate_limit')) {
+    return 'Límite de envíos alcanzado por seguridad en Supabase. Espera 60 segundos antes de reintentar y revisa tu carpeta de Spam / Correo no deseado.';
+  }
   return message;
 };
 
