@@ -88,6 +88,22 @@ Abre [http://localhost:3000](http://localhost:3000) (o el puerto asignado por Vi
 
 ---
 
+## 🌐 Despliegue en Netlify
+
+El repositorio ya incluye `netlify.toml` y `public/_redirects` optimizados para Single Page Applications (SPA).
+
+### Pasos para desplegar:
+1. Conecta tu repositorio de GitHub `sendeiser/LinearStudio` en [app.netlify.com](https://app.netlify.com/).
+2. **Build settings:**
+   - **Build command:** `npm run build`
+   - **Publish directory:** `dist`
+3. **Variables de Entorno (Site configuration > Environment variables):**
+   - `VITE_SUPABASE_URL`: `https://ydoviusjpgmjsxpspexu.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY`: (tu llave pública anon de Supabase)
+   - `VITE_GITHUB_TOKEN`: (opcional)
+
+---
+
 ## 🤖 Uso con el Agente Antigravity
 
 LinearStudio incluye una Skill de Antigravity que permite interactuar con el tablero desde el chat del asistente:
