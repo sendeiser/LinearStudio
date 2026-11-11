@@ -164,6 +164,16 @@ export const App: React.FC = () => {
     }
   });
 
+  // Mantener selectedIssue sincronizado si issues se refresca desde Supabase
+  useEffect(() => {
+    if (selectedIssue) {
+      const fresh = issues.find((i) => i.id === selectedIssue.id);
+      if (fresh && JSON.stringify(fresh) !== JSON.stringify(selectedIssue)) {
+        setSelectedIssue(fresh);
+      }
+    }
+  }, [issues]);
+
   // Calculate counts per column for mobile tabs
   const counts: Record<ColumnId, number> = {
     backlog: issues.filter((i) => i.status === 'backlog').length,

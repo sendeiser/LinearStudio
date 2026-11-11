@@ -74,72 +74,121 @@ export const IssueDetailDrawer: React.FC = () => {
   const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
 
   const handleToggleSubtask = async (subtaskId: string, currentCompleted: boolean) => {
+    if (!selectedIssue) return;
+    const nextCompleted = !currentCompleted;
+    const nextSubtasks = selectedIssue.subtasks.map((st) =>
+      st.id === subtaskId ? { ...st, completed: nextCompleted } : st
+    );
+
+    // 1. Actualización optimista inmediata (0ms) en Drawer, React Query cache y dataService
+    setSelectedIssue({ ...selectedIssue, subtasks: nextSubtasks });
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, subtasks: nextSubtasks } : i)) : old)
+    );
+    dataService.toggleSubtask(selectedIssue.id, subtaskId);
+
+    // 2. Persistencia en Supabase Cloud
     try {
-      await repo.setSubtaskCompleted(selectedIssue.id, subtaskId, !currentCompleted);
+      await repo.setSubtaskCompleted(selectedIssue.id, subtaskId, nextCompleted);
     } catch (e) {
       console.warn('Notice al actualizar subtarea en Supabase:', e);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
-    const updated = dataService.toggleSubtask(selectedIssue.id, subtaskId);
-    if (updated) setSelectedIssue(updated);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
   const handleAddSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubtaskTitle.trim()) return;
+    const title = newSubtaskTitle.trim();
+    if (!title || !selectedIssue) return;
 
     setIsAddingSubtask(true);
+    setNewSubtaskTitle('');
+    const tempId = `sub_${Date.now()}`;
+    const nextSubtasks = [...selectedIssue.subtasks, { id: tempId, title, completed: false }];
+
+    setSelectedIssue({ ...selectedIssue, subtasks: nextSubtasks });
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, subtasks: nextSubtasks } : i)) : old)
+    );
+    dataService.addSubtask(selectedIssue.id, title);
+
     try {
-      await repo.addSubtask(selectedIssue.id, newSubtaskTitle.trim());
+      await repo.addSubtask(selectedIssue.id, title);
+      await queryClient.invalidateQueries({ queryKey: ['issues'] });
     } catch (e) {
       console.warn('Notice al agregar subtarea en Supabase:', e);
+    } finally {
+      setIsAddingSubtask(false);
     }
-    dataService.addSubtask(selectedIssue.id, newSubtaskTitle.trim());
-    const updated = dataService.getIssueById(selectedIssue.id);
-    if (updated) setSelectedIssue(updated);
-    setNewSubtaskTitle('');
-    setIsAddingSubtask(false);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
   const handleDeleteSubtask = async (subtaskId: string) => {
+    if (!selectedIssue) return;
+    const nextSubtasks = selectedIssue.subtasks.filter((st) => st.id !== subtaskId);
+
+    setSelectedIssue({ ...selectedIssue, subtasks: nextSubtasks });
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, subtasks: nextSubtasks } : i)) : old)
+    );
+    dataService.deleteSubtask(selectedIssue.id, subtaskId);
+
     try {
       await repo.deleteSubtask(selectedIssue.id, subtaskId);
     } catch (e) {
       console.warn('Notice al eliminar subtarea en Supabase:', e);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
-    dataService.deleteSubtask(selectedIssue.id, subtaskId);
-    const updated = dataService.getIssueById(selectedIssue.id);
-    if (updated) setSelectedIssue(updated);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
   const handlePriorityChange = async (priority: Priority) => {
+    if (!selectedIssue) return;
+    setSelectedIssue({ ...selectedIssue, priority });
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, priority } : i)) : old)
+    );
+    dataService.updateIssuePriority(selectedIssue.id, priority);
+
     try {
       await repo.setPriority(selectedIssue.id, priority);
     } catch (e) {
       console.warn('Notice al cambiar prioridad en Supabase:', e);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
-    const updated = dataService.updateIssuePriority(selectedIssue.id, priority);
-    if (updated) setSelectedIssue(updated);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    const content = newComment.trim();
+    if (!content || !selectedIssue) return;
     const author = currentUserEmail ? currentUserEmail.split('@')[0] : 'TinChoX';
+    setNewComment('');
+
+    const newCommentObj = {
+      id: `c_${Date.now()}`,
+      author,
+      avatar: author.slice(0, 2).toUpperCase(),
+      content,
+      createdAt: 'ahora'
+    };
+    const nextComments = [...selectedIssue.comments, newCommentObj];
+
+    setSelectedIssue({ ...selectedIssue, comments: nextComments });
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, comments: nextComments } : i)) : old)
+    );
+    dataService.addComment(selectedIssue.id, author, content);
 
     try {
-      await repo.addComment(selectedIssue.id, author, newComment.trim());
+      await repo.addComment(selectedIssue.id, author, content);
     } catch (e) {
       console.warn('Notice al agregar comentario en Supabase:', e);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
-    dataService.addComment(selectedIssue.id, author, newComment.trim());
-    const updated = dataService.getIssueById(selectedIssue.id);
-    if (updated) setSelectedIssue(updated);
-    setNewComment('');
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
   };
 
   // Cambiar directamente de columna / estado desde el drawer
@@ -193,7 +242,29 @@ export const IssueDetailDrawer: React.FC = () => {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    // 1. Supabase Cloud DB
+    const updatedIssue: Issue = {
+      ...selectedIssue,
+      title: editTitle.trim(),
+      description: editDescription,
+      priority: editPriority,
+      status: editStatus,
+      tags: parsedTags.length > 0 ? parsedTags : selectedIssue.tags,
+      assignee: {
+        ...selectedIssue.assignee,
+        name: editAssignee.trim() || selectedIssue.assignee.name,
+        avatar: (editAssignee.trim() || selectedIssue.assignee.name).slice(0, 2).toUpperCase()
+      }
+    };
+
+    // 1. Actualización optimista inmediata en Drawer, React Query y dataService
+    setSelectedIssue(updatedIssue);
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['issues'] },
+      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? updatedIssue : i)) : old)
+    );
+    dataService.updateIssue(selectedIssue.id, updatedIssue);
+
+    // 2. Supabase Cloud DB
     try {
       await repo.update(selectedIssue.id, {
         title: editTitle.trim(),
@@ -205,23 +276,8 @@ export const IssueDetailDrawer: React.FC = () => {
       });
     } catch (err: any) {
       console.warn('Notice al actualizar issue en Supabase:', err);
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     }
-
-    // 2. Local dataService
-    const updated = dataService.updateIssue(selectedIssue.id, {
-      title: editTitle.trim(),
-      description: editDescription,
-      priority: editPriority,
-      status: editStatus,
-      tags: parsedTags.length > 0 ? parsedTags : selectedIssue.tags,
-      assignee: {
-        ...selectedIssue.assignee,
-        name: editAssignee.trim() || selectedIssue.assignee.name,
-        avatar: (editAssignee.trim() || selectedIssue.assignee.name).slice(0, 2).toUpperCase()
-      }
-    });
-
-    if (updated) setSelectedIssue(updated);
 
     // 3. GitHub Issue Update (bidirectional)
     const targetRepo = selectedIssue.projectName || activeRepoFullName;
@@ -610,15 +666,12 @@ export const IssueDetailDrawer: React.FC = () => {
                   key={st.id} 
                   className="group flex items-center justify-between p-2 rounded-lg bg-surface dark:bg-dark-surface-elevated border border-border-subtle dark:border-dark-border hover:bg-surface-subtle dark:hover:bg-dark-surface shadow-sm transition-colors"
                 >
-                  <label 
-                    onClick={() => handleToggleSubtask(st.id, st.completed)}
-                    className="flex items-center gap-2.5 flex-1 cursor-pointer select-none min-w-0"
-                  >
+                  <label className="flex items-center gap-2.5 flex-1 cursor-pointer select-none min-w-0">
                     <input 
                       type="checkbox" 
                       checked={st.completed}
-                      onChange={() => {}} 
-                      className="rounded border-border-subtle text-brand focus:ring-brand cursor-pointer shrink-0" 
+                      onChange={() => handleToggleSubtask(st.id, st.completed)} 
+                      className="rounded border-border-subtle text-brand focus:ring-brand cursor-pointer shrink-0 w-4 h-4" 
                     />
                     <span className={`truncate ${st.completed ? 'line-through text-text-muted font-normal' : 'text-text-primary dark:text-dark-text font-medium'}`}>
                       {st.title}
@@ -629,7 +682,7 @@ export const IssueDetailDrawer: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleDeleteSubtask(st.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded text-text-muted hover:text-rose-600 transition-all ml-1.5 shrink-0"
+                      className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1 rounded text-text-muted hover:text-rose-600 transition-opacity ml-1.5 shrink-0"
                       title="Eliminar subtarea"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
