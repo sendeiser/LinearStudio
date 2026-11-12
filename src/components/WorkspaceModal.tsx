@@ -15,7 +15,12 @@ import {
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
-import { workspaceService, WorkspaceSummary, WorkspaceMemberInfo } from '../services/workspaceService';
+import { 
+  workspaceService, 
+  WorkspaceSummary, 
+  WorkspaceMemberInfo,
+  RegisteredUserOption
+} from '../services/workspaceService';
 import { githubService, GitHubRepositoryItem } from '../services/githubService';
 import { isValidRepoName } from '../services/authHelpers';
 
@@ -41,6 +46,9 @@ export const WorkspaceModal: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'developer' | 'viewer'>('developer');
   const [selectedWsForInvite, setSelectedWsForInvite] = useState<string | null>(null);
+  const [registeredUsersByWs, setRegisteredUsersByWs] = useState<Record<string, RegisteredUserOption[]>>({});
+  const [loadingUsersWs, setLoadingUsersWs] = useState<string | null>(null);
+  const [manualInviteMode, setManualInviteMode] = useState(false);
 
   // Members panel state per workspace
   const [selectedWsForMembers, setSelectedWsForMembers] = useState<string | null>(null);
@@ -87,6 +95,18 @@ export const WorkspaceModal: React.FC = () => {
     }
   };
 
+  const loadRegisteredUsersForWs = async (wsId: string) => {
+    setLoadingUsersWs(wsId);
+    try {
+      const users = await workspaceService.listRegisteredUsers(wsId);
+      setRegisteredUsersByWs((prev) => ({ ...prev, [wsId]: users }));
+    } catch (err: any) {
+      console.warn('Error cargando usuarios registrados:', err);
+    } finally {
+      setLoadingUsersWs(null);
+    }
+  };
+
   useEffect(() => {
     if (isWorkspaceModalOpen && currentUserEmail) {
       loadWorkspaces();
@@ -109,6 +129,17 @@ export const WorkspaceModal: React.FC = () => {
     await loadWorkspaceMembers(wsId);
   };
 
+  const handleToggleInvite = async (wsId: string) => {
+    if (selectedWsForInvite === wsId) {
+      setSelectedWsForInvite(null);
+      return;
+    }
+    setSelectedWsForInvite(wsId);
+    setInviteEmail('');
+    setManualInviteMode(false);
+    await loadRegisteredUsersForWs(wsId);
+  };
+
   const handleRemoveMember = async (wsId: string, member: WorkspaceMemberInfo) => {
     if (!window.confirm(`¿Eliminar a '${member.email}' del equipo de este workspace?`)) return;
     setRemovingMemberId(member.userId);
@@ -119,6 +150,9 @@ export const WorkspaceModal: React.FC = () => {
         ...prev,
         [wsId]: (prev[wsId] || []).filter((m) => m.userId !== member.userId)
       }));
+      if (selectedWsForInvite === wsId) {
+        await loadRegisteredUsersForWs(wsId);
+      }
       setStatusMsg({ type: 'success', text: `✓ Miembro '${member.email}' eliminado del workspace.` });
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al eliminar miembro' });
@@ -192,7 +226,9 @@ export const WorkspaceModal: React.FC = () => {
       await workspaceService.inviteMember(wsId, inviteEmail, inviteRole);
       setStatusMsg({ type: 'success', text: `¡Invitación enviada a ${inviteEmail} con rol ${inviteRole}!` });
       setInviteEmail('');
+      setManualInviteMode(false);
       setSelectedWsForInvite(null);
+      await loadRegisteredUsersForWs(wsId);
       if (selectedWsForMembers === wsId) {
         await loadWorkspaceMembers(wsId);
       }
@@ -306,7 +342,7 @@ export const WorkspaceModal: React.FC = () => {
 
                               <button
                                 type="button"
-                                onClick={() => setSelectedWsForInvite(selectedWsForInvite === ws.id ? null : ws.id)}
+                                onClick={() => handleToggleInvite(ws.id)}
                                 className="text-brand dark:text-dark-brand hover:underline text-[11px] font-semibold flex items-center gap-1"
                               >
                                 <UserPlus className="w-3 h-3" /> Invitar compañero
@@ -416,41 +452,81 @@ export const WorkspaceModal: React.FC = () => {
                           )}
 
                           {/* Invite Form Accordion */}
-                          {selectedWsForInvite === ws.id && (
-                            <form
-                              onSubmit={(e) => handleInvite(e, ws.id)}
-                              className="p-2.5 mt-1 rounded bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border flex flex-col gap-2 animate-in fade-in duration-150"
-                            >
-                              <span className="font-semibold text-[11px] text-text-primary dark:text-dark-text">
-                                Invitar a un colaborador al workspace
-                              </span>
-                              <div className="flex gap-2">
-                                <input
-                                  type="email"
-                                  required
-                                  value={inviteEmail}
-                                  onChange={(e) => setInviteEmail(e.target.value)}
-                                  placeholder="companero@ejemplo.com"
-                                  className="flex-1 bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2.5 py-1 text-xs outline-none focus:border-brand"
-                                />
-                                <select
-                                  value={inviteRole}
-                                  onChange={(e) => setInviteRole(e.target.value as any)}
-                                  className="bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2 py-1 text-xs outline-none focus:border-brand"
-                                >
-                                  <option value="developer">Developer</option>
-                                  <option value="admin">Admin</option>
-                                  <option value="viewer">Viewer</option>
-                                </select>
-                                <button
-                                  type="submit"
-                                  className="px-3 py-1 rounded bg-brand text-white font-bold text-xs shadow-sm hover:bg-brand-hover"
-                                >
-                                  Invitar
-                                </button>
-                              </div>
-                            </form>
-                          )}
+                          {selectedWsForInvite === ws.id && (() => {
+                            const availableUsers = registeredUsersByWs[ws.id] || [];
+                            const availableCount = availableUsers.filter((u) => !u.alreadyMember).length;
+                            return (
+                              <form
+                                onSubmit={(e) => handleInvite(e, ws.id)}
+                                className="p-2.5 mt-1 rounded bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border flex flex-col gap-2 animate-in fade-in duration-150"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-[11px] text-text-primary dark:text-dark-text">
+                                    Invitar colaborador registrado en el sistema
+                                  </span>
+                                  {loadingUsersWs === ws.id && <Loader2 className="w-3 h-3 animate-spin text-brand" />}
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                  <select
+                                    required={!manualInviteMode}
+                                    value={manualInviteMode ? '__manual__' : inviteEmail}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === '__manual__') {
+                                        setManualInviteMode(true);
+                                        setInviteEmail('');
+                                      } else {
+                                        setManualInviteMode(false);
+                                        setInviteEmail(val);
+                                      }
+                                    }}
+                                    className="flex-1 bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2.5 py-1.5 text-xs outline-none focus:border-brand cursor-pointer text-text-primary dark:text-dark-text"
+                                  >
+                                    <option value="">
+                                      -- Seleccionar usuario ({availableCount} disponibles) --
+                                    </option>
+                                    {availableUsers.map((u) => (
+                                      <option key={u.id} value={u.email} disabled={u.alreadyMember}>
+                                        {u.name} ({u.email}){u.alreadyMember ? ' — ✓ Ya es miembro' : ''}
+                                      </option>
+                                    ))}
+                                    <option value="__manual__">✏️ Escribir otro correo manualmente...</option>
+                                  </select>
+
+                                  <div className="flex gap-2">
+                                    <select
+                                      value={inviteRole}
+                                      onChange={(e) => setInviteRole(e.target.value as any)}
+                                      className="bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2 py-1 text-xs outline-none focus:border-brand text-text-primary dark:text-dark-text"
+                                    >
+                                      <option value="developer">Developer</option>
+                                      <option value="admin">Admin</option>
+                                      <option value="viewer">Viewer</option>
+                                    </select>
+                                    <button
+                                      type="submit"
+                                      disabled={!inviteEmail.trim()}
+                                      className="px-3 py-1 rounded bg-brand text-white font-bold text-xs shadow-sm hover:bg-brand-hover disabled:opacity-50"
+                                    >
+                                      Invitar
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {manualInviteMode && (
+                                  <input
+                                    type="email"
+                                    required
+                                    value={inviteEmail}
+                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                    placeholder="companero@ejemplo.com"
+                                    className="w-full bg-surface dark:bg-dark-surface border border-border-subtle rounded px-2.5 py-1.5 text-xs outline-none focus:border-brand"
+                                  />
+                                )}
+                              </form>
+                            );
+                          })()}
                         </div>
                       );
                     })}

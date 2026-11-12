@@ -67,29 +67,34 @@ def run():
         assert "PonelePlay" in active_ws_text
         assert "ExamenesIAForms" in active_ws_text
 
-        # Expandir miembros en el primer workspace (PonelePlay)
+        # Expandir miembros y selector de invitación en el primer workspace (PonelePlay)
         modal.locator("button:has-text('Miembros')").first.click()
-        time.sleep(1)
+        time.sleep(0.8)
+        modal.locator("button:has-text('Invitar compañero')").first.click()
+        time.sleep(1.2)
 
-        modal_shot = os.path.join(ARTIFACT_DIR, "workspaces-modal-members-delete.png")
+        modal_user_select = modal.locator("select:has(option[value='admin@gmail.com'])")
+        assert modal_user_select.is_visible(), "El selector de usuarios registrados debe aparecer al invitar en el modal"
+
+        modal_shot = os.path.join(ARTIFACT_DIR, "workspaces-modal-invite-selector.png")
         page.screenshot(path=modal_shot)
-        print(f"✓ Screenshot modal Workspaces guardado en {modal_shot}")
+        print(f"✓ Screenshot modal Workspaces con selector de usuarios guardado en {modal_shot}")
 
         # Cerrar modal
         modal.locator("button").first.click()
         time.sleep(0.5)
 
-        # 6. Ir a vista Equipo & Workspaces e invitar + eliminar un miembro real
-        print("6. Probando agregar y eliminar miembro en vista 'Equipo & Workspaces'...")
+        # 6. Ir a vista Equipo & Workspaces e invitar desde el selector + eliminar miembro real
+        print("6. Probando invitar desde el selector de usuarios y eliminar miembro en vista 'Equipo & Workspaces'...")
         page.locator("button:has-text('Equipo & Workspaces')").click()
         time.sleep(1.5)
 
-        # Invitar admin@gmail.com
-        invite_input = page.locator("input[placeholder*='Email del usuario']")
-        if invite_input.is_visible():
-            invite_input.fill("admin@gmail.com")
-            page.locator("button:has-text('Añadir al Equipo')").click()
-            time.sleep(2)
+        # Seleccionar admin@gmail.com desde el dropdown de registrados
+        team_user_select = page.locator("select:has(option[value='admin@gmail.com'])")
+        assert team_user_select.is_visible(), "El selector de usuarios registrados debe ser visible en Equipo & Workspaces"
+        team_user_select.select_option("admin@gmail.com")
+        page.locator("button:has-text('Añadir al Equipo')").click()
+        time.sleep(2)
 
         assert page.get_by_text("admin@gmail.com", exact=True).is_visible(), "admin@gmail.com debería haberse añadido al equipo"
         team_added_shot = os.path.join(ARTIFACT_DIR, "team-workspace-member-added.png")

@@ -13,7 +13,12 @@ import {
   GitBranch
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { workspaceService, WorkspaceSummary, WorkspaceMemberInfo } from '../../services/workspaceService';
+import { 
+  workspaceService, 
+  WorkspaceSummary, 
+  WorkspaceMemberInfo,
+  RegisteredUserOption
+} from '../../services/workspaceService';
 
 export const TeamWorkspaceView: React.FC = () => {
   const { 
@@ -26,6 +31,9 @@ export const TeamWorkspaceView: React.FC = () => {
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [selectedWsId, setSelectedWsId] = useState<string | null>(null);
   const [members, setMembers] = useState<WorkspaceMemberInfo[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUserOption[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [manualEmailMode, setManualEmailMode] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
@@ -67,6 +75,19 @@ export const TeamWorkspaceView: React.FC = () => {
     }
   };
 
+  const loadRegisteredUsers = async (wsId: string) => {
+    setLoadingUsers(true);
+    try {
+      const list = await workspaceService.listRegisteredUsers(wsId);
+      setRegisteredUsers(list);
+    } catch (err) {
+      console.warn('Error cargando usuarios registrados:', err);
+      setRegisteredUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     loadWorkspacesAndSelect();
   }, [currentUserEmail, activeRepoId]);
@@ -74,11 +95,15 @@ export const TeamWorkspaceView: React.FC = () => {
   useEffect(() => {
     if (selectedWsId) {
       loadMembers(selectedWsId);
+      loadRegisteredUsers(selectedWsId);
+      setInviteEmail('');
+      setManualEmailMode(false);
     }
   }, [selectedWsId]);
 
   const activeWorkspace = workspaces.find((w) => w.id === selectedWsId);
   const canManageTeam = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin';
+  const availableUsersCount = registeredUsers.filter((u) => !u.alreadyMember).length;
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +115,8 @@ export const TeamWorkspaceView: React.FC = () => {
       await workspaceService.inviteMember(selectedWsId, inviteEmail.trim(), inviteRole);
       setFeedback({ type: 'success', text: `✓ Colaborador ${inviteEmail.trim()} agregado al workspace.` });
       setInviteEmail('');
-      await loadMembers(selectedWsId);
+      setManualEmailMode(false);
+      await Promise.all([loadMembers(selectedWsId), loadRegisteredUsers(selectedWsId)]);
     } catch (err: any) {
       setFeedback({ type: 'error', text: err.message || 'Error al invitar miembro.' });
     } finally {
@@ -110,6 +136,7 @@ export const TeamWorkspaceView: React.FC = () => {
     try {
       await workspaceService.removeMember(selectedWsId, member.userId);
       setMembers((prev) => prev.filter((m) => m.userId !== member.userId));
+      await loadRegisteredUsers(selectedWsId);
       setFeedback({ type: 'success', text: `✓ Miembro '${member.email}' eliminado del equipo.` });
     } catch (err: any) {
       setFeedback({ type: 'error', text: err.message || 'No se pudo eliminar al miembro.' });
@@ -215,17 +242,36 @@ export const TeamWorkspaceView: React.FC = () => {
               <UserPlus className="w-4 h-4 text-brand dark:text-dark-brand" />
               <span>Invitar Colaborador al Workspace ({activeWorkspace?.name})</span>
             </span>
+            {loadingUsers && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand" />}
           </div>
 
           <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-            <input
-              type="email"
-              required
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="Email del usuario registrado..."
-              className="bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border rounded-lg px-3 py-2 text-text-primary dark:text-dark-text outline-none focus:border-brand"
-            />
+            <select
+              required={!manualEmailMode}
+              value={manualEmailMode ? '__manual__' : inviteEmail}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '__manual__') {
+                  setManualEmailMode(true);
+                  setInviteEmail('');
+                } else {
+                  setManualEmailMode(false);
+                  setInviteEmail(val);
+                }
+              }}
+              className="bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border rounded-lg px-3 py-2 text-text-primary dark:text-dark-text outline-none focus:border-brand cursor-pointer"
+            >
+              <option value="">
+                -- Elegir usuario registrado ({availableUsersCount} disponibles) --
+              </option>
+              {registeredUsers.map((u) => (
+                <option key={u.id} value={u.email} disabled={u.alreadyMember}>
+                  {u.name} ({u.email}){u.alreadyMember ? ' — ✓ Ya es miembro' : ''}
+                </option>
+              ))}
+              <option value="__manual__">✏️ Ingresar otro email manualmente...</option>
+            </select>
+
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as any)}
@@ -237,12 +283,23 @@ export const TeamWorkspaceView: React.FC = () => {
             </select>
             <button
               type="submit"
-              disabled={inviting}
+              disabled={inviting || !inviteEmail.trim()}
               className="py-2 px-4 rounded-lg bg-brand hover:bg-brand-hover dark:bg-dark-brand text-white font-bold shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
               <span>{inviting ? 'Agregando...' : 'Añadir al Equipo'}</span>
             </button>
+
+            {manualEmailMode && (
+              <input
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="Escribe el correo electrónico del usuario..."
+                className="sm:col-span-3 bg-canvas dark:bg-dark-canvas border border-border-subtle dark:border-dark-border rounded-lg px-3 py-2 text-text-primary dark:text-dark-text outline-none focus:border-brand"
+              />
+            )}
           </form>
         </div>
       )}

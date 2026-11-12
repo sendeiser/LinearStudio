@@ -23,6 +23,13 @@ export interface WorkspaceMemberInfo {
   joinedAt: string;
 }
 
+export interface RegisteredUserOption {
+  id: string;
+  email: string;
+  name: string;
+  alreadyMember: boolean;
+}
+
 export class WorkspaceService {
   constructor(private readonly client: SupabaseClient = supabase) {}
 
@@ -196,6 +203,24 @@ export class WorkspaceService {
       name: m.name,
       role: m.role,
       joinedAt: m.joined_at
+    }));
+  }
+
+  public async listRegisteredUsers(workspaceId?: string | null): Promise<RegisteredUserOption[]> {
+    const { data, error } = await this.client.rpc('ls_list_registered_users', {
+      p_workspace: workspaceId || null
+    });
+
+    if (error || !data) {
+      if (error) console.warn('Error al listar usuarios registrados:', error.message);
+      return [];
+    }
+
+    return (data as any[]).map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      alreadyMember: Boolean(u.already_member)
     }));
   }
 

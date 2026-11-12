@@ -163,5 +163,23 @@ describe('WorkspaceService', () => {
     expect(rpcCall).toBeDefined();
     expect(rpcCall?.args[0]).toEqual({ p_workspace: 'ws-uuid-1' });
   });
+
+  it('should list registered users via ls_list_registered_users RPC', async () => {
+    const { client, calls } = mockClient({
+      'rpc:ls_list_registered_users': {
+        data: [
+          { id: 'u2', email: 'dev@test.com', name: 'Dev', already_member: false }
+        ],
+        error: null
+      }
+    });
+    const service = new WorkspaceService(client);
+    const users = await service.listRegisteredUsers('ws-uuid-1');
+
+    expect(users).toHaveLength(1);
+    expect(users[0]).toEqual({ id: 'u2', email: 'dev@test.com', name: 'Dev', alreadyMember: false });
+    const rpcCall = calls.find(c => c.method === 'rpc:ls_list_registered_users');
+    expect(rpcCall?.args[0]).toEqual({ p_workspace: 'ws-uuid-1' });
+  });
 });
 
