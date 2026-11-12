@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Menu, Search, Sun, Moon, RefreshCw, Plus, Cloud, HardDrive } from 'lucide-react';
+import { Menu, Search, Sun, Moon, RefreshCw, Plus, Cloud, HardDrive, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from '../store/useStore';
 import { githubService } from '../services/githubService';
@@ -10,6 +10,8 @@ export const Topbar: React.FC = () => {
     theme, 
     toggleTheme, 
     setIsMobileMenuOpen, 
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
     setIsCreateModalOpen,
     setIsAuthModalOpen,
     setIsWorkspaceModalOpen,
@@ -27,11 +29,14 @@ export const Topbar: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebarCollapsed();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [toggleSidebarCollapsed]);
 
   const handleSync = async () => {
     const tok = githubToken || githubService.getToken();
@@ -57,14 +62,24 @@ export const Topbar: React.FC = () => {
 
   return (
     <header className="h-14 px-3 md:px-5 bg-surface dark:bg-dark-surface border-b border-border-subtle dark:border-dark-border flex items-center justify-between shrink-0 z-30 shadow-sm">
-      {/* Left: Mobile Menu & Project Info */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      {/* Left: Mobile Menu / Desktop Sidebar Toggle & Project Info */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button 
           onClick={() => setIsMobileMenuOpen(true)}
           className="md:hidden p-2 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated"
           aria-label="Abrir menú"
         >
           <Menu className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={toggleSidebarCollapsed}
+          data-testid="desktop-sidebar-toggle"
+          className="hidden md:inline-flex p-1.5 rounded-lg text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-dark-surface-elevated border border-transparent hover:border-border-subtle transition-colors cursor-pointer"
+          aria-label={isSidebarCollapsed ? 'Expandir menú lateral' : 'Retraer menú lateral'}
+          title={isSidebarCollapsed ? 'Mostrar barra lateral (Ctrl+B)' : 'Ocultar barra lateral (Ctrl+B)'}
+        >
+          {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>
 
         <div className="flex items-center gap-2 min-w-0">

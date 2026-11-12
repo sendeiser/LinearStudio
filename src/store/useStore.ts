@@ -16,6 +16,9 @@ interface AppState {
   setIsCreateModalOpen: (open: boolean) => void;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
   isWorkspaceModalOpen: boolean;
@@ -70,6 +73,22 @@ export const useStore = create<AppState>((set) => ({
   setIsCreateModalOpen: (open) => set({ isCreateModalOpen: open }),
   isMobileMenuOpen: false,
   setIsMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
+  isSidebarCollapsed: typeof window !== 'undefined' ? localStorage.getItem('sidebarCollapsed') === 'true' : false,
+  setIsSidebarCollapsed: (collapsed) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarCollapsed', String(collapsed));
+    }
+    set({ isSidebarCollapsed: collapsed });
+  },
+  toggleSidebarCollapsed: () => {
+    set((state) => {
+      const next = !state.isSidebarCollapsed;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sidebarCollapsed', String(next));
+      }
+      return { isSidebarCollapsed: next };
+    });
+  },
   isAuthModalOpen: false,
   setIsAuthModalOpen: (open) => set({ isAuthModalOpen: open }),
   isWorkspaceModalOpen: false,

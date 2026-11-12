@@ -29,7 +29,8 @@ export const Sidebar: React.FC = () => {
     activeView,
     setActiveView,
     setSelectedIssue,
-    pullRequests
+    pullRequests,
+    isSidebarCollapsed
   } = useStore();
 
   const openPrsCount = (pullRequests || []).filter((p) => p.status === 'open').length;
@@ -61,10 +62,16 @@ export const Sidebar: React.FC = () => {
 
       {/* Sidebar Container */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-surface dark:bg-dark-surface border-r border-border-subtle dark:border-dark-border flex flex-col justify-between p-3.5 transform ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 md:static md:z-20 transition-transform duration-200 ease-in-out shrink-0 shadow-lg md:shadow-none`}
+        data-testid="sidebar"
+        className={`fixed inset-y-0 left-0 z-50 bg-surface dark:bg-dark-surface border-r border-border-subtle dark:border-dark-border overflow-hidden transform ${
+          isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'
+        } md:static md:z-20 md:translate-x-0 ${
+          isSidebarCollapsed
+            ? 'md:w-0 md:border-r-0 md:opacity-0 md:pointer-events-none'
+            : 'md:w-64 md:opacity-100'
+        } transition-all duration-200 ease-in-out shrink-0 shadow-lg md:shadow-none`}
       >
+        <div className="w-64 h-full flex flex-col justify-between p-3.5 shrink-0 overflow-y-auto touch-pan-y">
         <div className="flex flex-col gap-3.5">
           {/* Workspace & Repo Header */}
           <div 
@@ -170,6 +177,7 @@ export const Sidebar: React.FC = () => {
               <LogOut className="w-4 h-4" />
             </button>
           </div>
+        </div>
         </div>
       </aside>
     </>

@@ -48,3 +48,4 @@ $$;
 
 REVOKE ALL ON FUNCTION public.ls_list_registered_users(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ls_list_registered_users(UUID) TO authenticated;
+
