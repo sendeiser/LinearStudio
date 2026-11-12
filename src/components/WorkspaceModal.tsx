@@ -186,6 +186,7 @@ export const WorkspaceModal: React.FC = () => {
 
       await queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
       await queryClient.invalidateQueries({ queryKey: ['issues'] });
+      await queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
       setStatusMsg({ type: 'success', text: `✓ Workspace '${ws.name}' eliminado de Supabase Cloud.` });
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al eliminar workspace' });
@@ -212,6 +213,7 @@ export const WorkspaceModal: React.FC = () => {
       await loadWorkspaces();
       queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
       queryClient.invalidateQueries({ queryKey: ['issues'] });
+      queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al crear workspace' });
     }
@@ -378,6 +380,7 @@ export const WorkspaceModal: React.FC = () => {
                                     onClick={() => {
                                       setActiveRepoId(repo.id);
                                       setActiveRepoFullName(repo.fullName);
+                                      setIsWorkspaceModalOpen(false);
                                       queryClient.invalidateQueries({ queryKey: ['issues'] });
                                     }}
                                     className={`px-2.5 py-1 rounded-md text-xs font-mono flex items-center gap-1.5 border transition-all ${

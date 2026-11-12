@@ -31,6 +31,7 @@ export interface IssueRow {
   branch: string | null;
   created_at: string;
   updated_at: string;
+  ls_linked_repositories?: { id?: string; full_name?: string } | Array<{ id?: string; full_name?: string }> | null;
   ls_subtasks?: SubtaskRow[] | null;
   ls_comments?: CommentRow[] | null;
 }
@@ -56,33 +57,54 @@ export const relativeTime = (iso: string, now: Date = new Date()): string => {
   return `hace ${Math.floor(hours / 24)}d`;
 };
 
-export const rowToIssue = (row: IssueRow): Issue => ({
-  id: row.number,
-  title: row.title,
-  description: row.description ?? '',
-  status: COLUMNS.includes(row.status as ColumnId) ? (row.status as ColumnId) : 'backlog',
-  priority: PRIORITIES.includes(row.priority as Priority) ? (row.priority as Priority) : 'medium',
-  tags: row.tags ?? [],
-  assignee: {
-    name: row.assignee_name,
-    avatar: avatarOf(row.assignee_name),
-    role: row.assignee_role
-  },
-  branch: row.branch ?? undefined,
-  prNumber: row.pr_number ?? undefined,
-  subtasks: [...(row.ls_subtasks ?? [])]
-    .sort((a, b) => a.position - b.position)
-    .map((s) => ({ id: s.id, title: s.title, completed: s.completed })),
-  comments: [...(row.ls_comments ?? [])]
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((c) => ({
-      id: c.id,
-      author: c.author_name,
-      avatar: avatarOf(c.author_name),
-      content: c.content,
-      createdAt: relativeTime(c.created_at)
-    })),
-  createdAt: row.created_at,
-  updatedAt: row.updated_at
-});
+export const rowToIssue = (
+  row: IssueRow,
+  repoMapOrFallback?: Record<string, string> | string
+): Issue => {
+  const repoJoined = Array.isArray(row.ls_linked_repositories)
+    ? row.ls_linked_repositories[0]
+    : row.ls_linked_repositories;
+  const repoNameFromJoin = repoJoined?.full_name;
+
+  let resolvedProjectName: string | undefined = repoNameFromJoin;
+  if (!resolvedProjectName && row.repository_id) {
+    if (typeof repoMapOrFallback === 'object' && repoMapOrFallback !== null) {
+      resolvedProjectName = repoMapOrFallback[row.repository_id];
+    } else if (typeof repoMapOrFallback === 'string') {
+      resolvedProjectName = repoMapOrFallback;
+    }
+  }
+
+  return {
+    id: row.number,
+    repositoryId: row.repository_id,
+    projectName: resolvedProjectName,
+    title: row.title,
+    description: row.description ?? '',
+    status: COLUMNS.includes(row.status as ColumnId) ? (row.status as ColumnId) : 'backlog',
+    priority: PRIORITIES.includes(row.priority as Priority) ? (row.priority as Priority) : 'medium',
+    tags: row.tags ?? [],
+    assignee: {
+      name: row.assignee_name,
+      avatar: avatarOf(row.assignee_name),
+      role: row.assignee_role
+    },
+    branch: row.branch ?? undefined,
+    prNumber: row.pr_number ?? undefined,
+    subtasks: [...(row.ls_subtasks ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((s) => ({ id: s.id, title: s.title, completed: s.completed })),
+    comments: [...(row.ls_comments ?? [])]
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((c) => ({
+        id: c.id,
+        author: c.author_name,
+        avatar: avatarOf(c.author_name),
+        content: c.content,
+        createdAt: relativeTime(c.created_at)
+      })),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+};
 

@@ -46,6 +46,32 @@ describe('SupabaseIssueRepository', () => {
     expect(calls[0].filters).toContainEqual(['repository_id', 'r1']);
   });
 
+  it('lists federated issues across all repositories without repository_id filter when id is "all"', async () => {
+    const { client, calls } = fakeClient({
+      'ls_issues:select': {
+        data: [
+          {
+            id: 'u1', repository_id: 'r1', number: 1, title: 'Repo 1 issue', description: '', status: 'todo', priority: 'low',
+            tags: [], assignee_name: 'Ana', assignee_role: '', pr_number: null, branch: null,
+            created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-01T00:00:00Z',
+            ls_linked_repositories: { id: 'r1', full_name: 'sendeiser/PonelePlay' }, ls_subtasks: [], ls_comments: []
+          },
+          {
+            id: 'u2', repository_id: 'r2', number: 1, title: 'Repo 2 issue', description: '', status: 'in_progress', priority: 'urgent',
+            tags: [], assignee_name: 'Luis', assignee_role: '', pr_number: null, branch: null,
+            created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-01T00:00:00Z',
+            ls_linked_repositories: { id: 'r2', full_name: 'sendeiser/ExamenesIAForms' }, ls_subtasks: [], ls_comments: []
+          }
+        ]
+      }
+    });
+    const issues = await new SupabaseIssueRepository(client, 'all', actor).list();
+    expect(issues).toHaveLength(2);
+    expect(calls[0].filters).toEqual([]);
+    expect(issues[0].projectName).toBe('sendeiser/PonelePlay');
+    expect(issues[1].projectName).toBe('sendeiser/ExamenesIAForms');
+  });
+
   it('creates an issue in the repository with the actor as assignee plus a default subtask', async () => {
     const { client, calls } = fakeClient({ 'ls_issues:insert': { data: { id: 'new-uuid', number: 9 } } });
     await new SupabaseIssueRepository(client, 'r1', actor).create({

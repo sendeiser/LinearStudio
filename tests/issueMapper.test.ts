@@ -30,6 +30,7 @@ describe('issueMapper', () => {
   it('maps a database row to the Issue domain model using the per-repo number as id', () => {
     const issue = rowToIssue(baseRow);
     expect(issue.id).toBe(7);
+    expect(issue.repositoryId).toBe('repo-1');
     expect(issue.title).toBe('Fix login');
     expect(issue.status).toBe('in_progress');
     expect(issue.priority).toBe('high');
@@ -37,6 +38,14 @@ describe('issueMapper', () => {
     expect(issue.prNumber).toBe(12);
     expect(issue.branch).toBe('fix/login');
     expect(issue.assignee).toEqual({ name: 'Elena Kim', avatar: 'EK', role: 'Backend' });
+  });
+
+  it('resolves projectName from ls_linked_repositories join or repo map fallback', () => {
+    const joined = rowToIssue({ ...baseRow, ls_linked_repositories: { id: 'repo-1', full_name: 'sendeiser/PonelePlay' } });
+    expect(joined.projectName).toBe('sendeiser/PonelePlay');
+
+    const mapped = rowToIssue(baseRow, { 'repo-1': 'sendeiser/ExamenesIAForms' });
+    expect(mapped.projectName).toBe('sendeiser/ExamenesIAForms');
   });
 
   it('orders subtasks by position and comments chronologically', () => {

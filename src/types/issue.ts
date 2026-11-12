@@ -17,6 +17,7 @@ export interface Comment {
 
 export interface Issue {
   id: number;
+  repositoryId?: string;
   title: string;
   description: string;
   status: ColumnId;

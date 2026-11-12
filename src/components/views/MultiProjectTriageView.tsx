@@ -18,7 +18,8 @@ import { Issue, ColumnId, Priority } from '../../types/issue';
 import { useStore } from '../../store/useStore';
 import { dataService } from '../../services/dataService';
 import { workspaceService } from '../../services/workspaceService';
-import { getActiveIssueRepository } from '../../services/issueRepository';
+import { SupabaseIssueRepository, getActiveIssueRepository } from '../../services/issueRepository';
+import { supabase } from '../../lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface MultiProjectTriageViewProps {
@@ -101,6 +102,56 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
     return list;
   }, [dbProjects, issues, currentUserEmail]);
 
+  // Mapa rápido de id -> fullName
+  const repoNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    availableProjects.forEach((p) => {
+      map[p.id] = p.fullName;
+    });
+    return map;
+  }, [availableProjects]);
+
+  // Cargar TODOS los issues de TODOS los repositorios vinculados en Supabase Cloud
+  const { 
+    data: federatedIssues = [], 
+    isLoading: loadingFederatedIssues 
+  } = useQuery({
+    queryKey: ['all-federated-issues', currentUserEmail],
+    queryFn: async () => {
+      if (currentUserEmail) {
+        try {
+          const repo = new SupabaseIssueRepository(supabase, 'all', {
+            name: currentUserEmail.split('@')[0],
+            role: userRole || 'admin'
+          });
+          const list = await repo.list();
+          return list || [];
+        } catch (e) {
+          console.warn('Error al cargar issues federados:', e);
+          return [];
+        }
+      }
+      return dataService.getIssues();
+    }
+  });
+
+  // Lista unificada de issues federados con projectName garantizado
+  const allFederatedIssues: Issue[] = useMemo(() => {
+    const baseList = currentUserEmail
+      ? federatedIssues
+      : issues.length > 0
+      ? issues
+      : dataService.getIssues();
+    return baseList.map((i) => ({
+      ...i,
+      projectName:
+        i.projectName ||
+        (i.repositoryId ? repoNameMap[i.repositoryId] : undefined) ||
+        availableProjects[0]?.fullName ||
+        'General'
+    }));
+  }, [currentUserEmail, federatedIssues, issues, repoNameMap, availableProjects]);
+
   // Default target project for new issue selector
   useEffect(() => {
     if (!newProject && availableProjects.length > 0) {
@@ -119,9 +170,20 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
     return 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-300';
   };
 
-  const filteredIssues = issues.filter((i) => {
-    const proj = i.projectName || (availableProjects[0]?.fullName ?? 'General');
-    if (selectedProject !== 'all' && proj.toLowerCase() !== selectedProject.toLowerCase()) return false;
+  const filteredIssues = allFederatedIssues.filter((i) => {
+    const proj =
+      i.projectName ||
+      (i.repositoryId ? repoNameMap[i.repositoryId] : '') ||
+      availableProjects[0]?.fullName ||
+      'General';
+    if (selectedProject !== 'all') {
+      const targetProj = availableProjects.find(
+        (p) => p.fullName.toLowerCase() === selectedProject.toLowerCase()
+      );
+      const matchId = targetProj && i.repositoryId && targetProj.id === i.repositoryId;
+      const matchName = proj.toLowerCase() === selectedProject.toLowerCase();
+      if (!matchId && !matchName) return false;
+    }
     if (priorityFilter !== 'all' && i.priority !== priorityFilter) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -134,45 +196,100 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
     return true;
   });
 
-  const handleStatusChange = async (issueId: number, newStatus: ColumnId) => {
+  const handleStatusChange = async (issue: Issue, newStatus: ColumnId) => {
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['all-federated-issues'] },
+      (old) =>
+        old
+          ? old.map((i) =>
+              i.id === issue.id && (!issue.repositoryId || i.repositoryId === issue.repositoryId)
+                ? { ...i, status: newStatus }
+                : i
+            )
+          : old
+    );
     queryClient.setQueriesData<Issue[]>(
       { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === issueId ? { ...i, status: newStatus } : i)) : old)
+      (old) => (old ? old.map((i) => (i.id === issue.id ? { ...i, status: newStatus } : i)) : old)
     );
-    dataService.moveIssue(issueId, newStatus);
-    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
-    try {
-      await repo.move(issueId, newStatus);
-    } catch (err) {
-      console.warn('Notice al mover en Supabase:', err);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    dataService.moveIssue(issue.id, newStatus);
+    const targetRepoId = issue.repositoryId || activeRepoId;
+    if (currentUserEmail && targetRepoId) {
+      const repo = getActiveIssueRepository(targetRepoId, currentUserEmail, userRole);
+      try {
+        await repo.move(issue.id, newStatus);
+      } catch (err) {
+        console.warn('Notice al mover en Supabase:', err);
+        queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
+        queryClient.invalidateQueries({ queryKey: ['issues'] });
+      }
     }
-    setFeedback(`✓ Issue #${issueId} actualizado a '${newStatus}'`);
+    setFeedback(`✓ Issue #${issue.id} actualizado a '${newStatus}'`);
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  const handlePriorityChange = async (issueId: number, newPriority: Priority) => {
+  const handlePriorityChange = async (issue: Issue, newPriority: Priority) => {
+    queryClient.setQueriesData<Issue[]>(
+      { queryKey: ['all-federated-issues'] },
+      (old) =>
+        old
+          ? old.map((i) =>
+              i.id === issue.id && (!issue.repositoryId || i.repositoryId === issue.repositoryId)
+                ? { ...i, priority: newPriority }
+                : i
+            )
+          : old
+    );
     queryClient.setQueriesData<Issue[]>(
       { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === issueId ? { ...i, priority: newPriority } : i)) : old)
+      (old) => (old ? old.map((i) => (i.id === issue.id ? { ...i, priority: newPriority } : i)) : old)
     );
-    dataService.updateIssuePriority(issueId, newPriority);
-    const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
-    try {
-      await repo.setPriority(issueId, newPriority);
-    } catch (err) {
-      console.warn('Notice al cambiar prioridad en Supabase:', err);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    dataService.updateIssuePriority(issue.id, newPriority);
+    const targetRepoId = issue.repositoryId || activeRepoId;
+    if (currentUserEmail && targetRepoId) {
+      const repo = getActiveIssueRepository(targetRepoId, currentUserEmail, userRole);
+      try {
+        await repo.setPriority(issue.id, newPriority);
+      } catch (err) {
+        console.warn('Notice al cambiar prioridad en Supabase:', err);
+        queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
+        queryClient.invalidateQueries({ queryKey: ['issues'] });
+      }
     }
-    setFeedback(`✓ Prioridad del Issue #${issueId} cambiada a '${newPriority}'`);
+    setFeedback(`✓ Prioridad del Issue #${issue.id} cambiada a '${newPriority}'`);
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  const handleCreateIssue = (e: React.FormEvent) => {
+  const handleCreateIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
     const targetProj = newProject || (availableProjects[0]?.fullName ?? 'LinearStudio');
+    const targetProjectObj = availableProjects.find(
+      (p) => p.fullName.toLowerCase() === targetProj.toLowerCase()
+    );
+    const targetRepoId =
+      targetProjectObj?.id && !targetProjectObj.id.startsWith('virtual_')
+        ? targetProjectObj.id
+        : activeRepoId;
+
+    if (currentUserEmail && targetRepoId) {
+      try {
+        const repo = new SupabaseIssueRepository(supabase, targetRepoId, {
+          name: currentUserEmail.split('@')[0],
+          role: userRole || 'admin'
+        });
+        await repo.create({
+          title: newTitle.trim(),
+          description: `Issue creado desde el Triage Multi-Proyecto para ${targetProj}`,
+          priority: newPriority,
+          status: 'todo'
+        });
+      } catch (err: any) {
+        console.warn('Notice al crear issue en Supabase:', err);
+      }
+    }
+
     dataService.createIssue({
       title: newTitle.trim(),
       description: `Issue creado desde el Triage Multi-Proyecto para ${targetProj}`,
@@ -181,7 +298,8 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
       projectName: targetProj
     });
 
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    await queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
+    await queryClient.invalidateQueries({ queryKey: ['issues'] });
     setFeedback(`✓ Nuevo issue creado para el proyecto '${targetProj}'`);
     setNewTitle('');
     setTimeout(() => setFeedback(null), 4000);
@@ -230,6 +348,7 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
       dataService.renameProjectInIssues(oldName, newName);
 
       await queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
+      await queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
       await queryClient.invalidateQueries({ queryKey: ['issues'] });
 
       if (selectedProject.toLowerCase() === oldName.toLowerCase()) {
@@ -266,6 +385,10 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
 
       // Limpiar inmediatamente en caché y actualizar repositorio activo si fue el eliminado
       queryClient.setQueriesData<Issue[]>(
+        { queryKey: ['all-federated-issues'] },
+        (old) => (old ? old.filter((i) => (i.projectName || '').toLowerCase() !== projName.toLowerCase()) : old)
+      );
+      queryClient.setQueriesData<Issue[]>(
         { queryKey: ['issues'] },
         (old) => (old ? old.filter((i) => (i.projectName || '').toLowerCase() !== projName.toLowerCase()) : old)
       );
@@ -284,6 +407,7 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
 
       await queryClient.invalidateQueries({ queryKey: ['linked-repositories'] });
       await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+      await queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
       await queryClient.invalidateQueries({ queryKey: ['issues'] });
 
       if (selectedProject.toLowerCase() === projName.toLowerCase()) {
@@ -314,7 +438,7 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
               <span className="px-2 py-0.5 rounded-full bg-brand-subtle dark:bg-brand/20 text-brand font-mono text-[10px] font-bold border border-brand/30">
                 {availableProjects.length} REPOS ACTIVOS
               </span>
-              {loadingProjects && (
+              {(loadingProjects || loadingFederatedIssues) && (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-text-muted" />
               )}
             </div>
@@ -344,8 +468,9 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
       {/* Project KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {availableProjects.map((proj) => {
-          const projIssues = issues.filter((i) => {
-            const iProj = i.projectName || activeRepoFullName || (availableProjects[0]?.fullName ?? '');
+          const projIssues = allFederatedIssues.filter((i) => {
+            if (i.repositoryId && proj.id && i.repositoryId === proj.id) return true;
+            const iProj = i.projectName || (i.repositoryId ? repoNameMap[i.repositoryId] : '') || '';
             return iProj.toLowerCase() === proj.fullName.toLowerCase();
           });
           const urgentCount = projIssues.filter((i) => i.priority === 'urgent' || i.priority === 'high').length;
@@ -494,9 +619,13 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
                 : 'bg-canvas dark:bg-dark-canvas border-border-subtle text-text-secondary hover:text-text-primary'
             }`}
           >
-            Todos ({issues.length})
+            Todos ({allFederatedIssues.length})
           </button>
           {availableProjects.map((p) => {
+            const countForProject = allFederatedIssues.filter((i) => 
+              (i.repositoryId && i.repositoryId === p.id) ||
+              (i.projectName && i.projectName.toLowerCase() === p.fullName.toLowerCase())
+            ).length;
             const isSel = selectedProject.toLowerCase() === p.fullName.toLowerCase();
             const displayName = p.fullName.includes('/') ? p.fullName.split('/')[1] : p.fullName;
             return (
@@ -509,7 +638,7 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
                     : 'bg-canvas dark:bg-dark-canvas border-border-subtle text-text-secondary hover:text-text-primary'
                 }`}
               >
-                {displayName}
+                {displayName} ({countForProject})
               </button>
             );
           })}
@@ -565,10 +694,14 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
                 </tr>
               ) : (
                 filteredIssues.map((issue) => {
-                  const projName = issue.projectName || availableProjects[0]?.fullName || 'General';
+                  const projName =
+                    issue.projectName ||
+                    (issue.repositoryId ? repoNameMap[issue.repositoryId] : undefined) ||
+                    availableProjects[0]?.fullName ||
+                    'General';
                   return (
                     <tr
-                      key={issue.id}
+                      key={`${issue.repositoryId || projName}-${issue.id}`}
                       className="hover:bg-surface-subtle/50 dark:hover:bg-dark-surface-elevated/40 transition-colors"
                     >
                       <td className="p-3 font-mono font-bold text-text-muted">
@@ -605,7 +738,7 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
                       <td className="p-3">
                         <select
                           value={issue.priority}
-                          onChange={(e) => handlePriorityChange(issue.id, e.target.value as Priority)}
+                          onChange={(e) => handlePriorityChange(issue, e.target.value as Priority)}
                           className={`text-[11px] font-bold rounded px-2 py-0.5 border outline-none cursor-pointer ${
                             issue.priority === 'urgent'
                               ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-300'
@@ -626,7 +759,7 @@ export const MultiProjectTriageView: React.FC<MultiProjectTriageViewProps> = ({ 
                       <td className="p-3">
                         <select
                           value={issue.status}
-                          onChange={(e) => handleStatusChange(issue.id, e.target.value as ColumnId)}
+                          onChange={(e) => handleStatusChange(issue, e.target.value as ColumnId)}
                           className={`text-[11px] font-bold rounded-lg px-2.5 py-1 border outline-none cursor-pointer ${
                             issue.status === 'done'
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300'

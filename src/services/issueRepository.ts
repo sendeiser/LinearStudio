@@ -102,7 +102,7 @@ export class SupabaseIssueRepository implements IssueRepository {
   async list(): Promise<Issue[]> {
     let query = this.client
       .from('ls_issues')
-      .select('*, ls_subtasks(*), ls_comments(*)')
+      .select('*, ls_linked_repositories(id, full_name), ls_subtasks(*), ls_comments(*)')
       .order('number', { ascending: false });
 
     if (this.repositoryId && this.repositoryId.trim() !== '' && this.repositoryId !== 'all') {
@@ -110,7 +110,7 @@ export class SupabaseIssueRepository implements IssueRepository {
     }
 
     const rows = unwrap<IssueRow[]>(await query);
-    return (rows ?? []).map(rowToIssue);
+    return (rows ?? []).map((r) => rowToIssue(r));
   }
 
   async create(input: NewIssueInput): Promise<void> {

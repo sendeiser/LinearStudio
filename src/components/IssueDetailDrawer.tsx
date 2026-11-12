@@ -71,7 +71,18 @@ export const IssueDetailDrawer: React.FC = () => {
   if (!selectedIssue) return null;
 
   const isAdmin = userRole === 'owner' || userRole === 'admin' || userRole === 'developer';
-  const repo = getActiveIssueRepository(activeRepoId, currentUserEmail, userRole);
+  const targetRepoId = selectedIssue.repositoryId || activeRepoId;
+  const repo = getActiveIssueRepository(targetRepoId, currentUserEmail, userRole);
+
+  const updateIssueCaches = (updater: (old: Issue[]) => Issue[]) => {
+    queryClient.setQueriesData<Issue[]>({ queryKey: ['issues'] }, (old) => (old ? updater(old) : old));
+    queryClient.setQueriesData<Issue[]>({ queryKey: ['all-federated-issues'] }, (old) => (old ? updater(old) : old));
+  };
+
+  const invalidateIssueCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
+  };
 
   const handleToggleSubtask = async (subtaskId: string, currentCompleted: boolean) => {
     if (!selectedIssue) return;
@@ -82,9 +93,12 @@ export const IssueDetailDrawer: React.FC = () => {
 
     // 1. Actualización optimista inmediata (0ms) en Drawer, React Query cache y dataService
     setSelectedIssue({ ...selectedIssue, subtasks: nextSubtasks });
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, subtasks: nextSubtasks } : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? { ...i, subtasks: nextSubtasks }
+          : i
+      )
     );
     dataService.toggleSubtask(selectedIssue.id, subtaskId);
 
@@ -93,7 +107,7 @@ export const IssueDetailDrawer: React.FC = () => {
       await repo.setSubtaskCompleted(selectedIssue.id, subtaskId, nextCompleted);
     } catch (e) {
       console.warn('Notice al actualizar subtarea en Supabase:', e);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     }
   };
 
@@ -108,15 +122,18 @@ export const IssueDetailDrawer: React.FC = () => {
     const nextSubtasks = [...selectedIssue.subtasks, { id: tempId, title, completed: false }];
 
     setSelectedIssue({ ...selectedIssue, subtasks: nextSubtasks });
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, subtasks: nextSubtasks } : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? { ...i, subtasks: nextSubtasks }
+          : i
+      )
     );
     dataService.addSubtask(selectedIssue.id, title);
 
     try {
       await repo.addSubtask(selectedIssue.id, title);
-      await queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     } catch (e) {
       console.warn('Notice al agregar subtarea en Supabase:', e);
     } finally {
@@ -129,9 +146,12 @@ export const IssueDetailDrawer: React.FC = () => {
     const nextSubtasks = selectedIssue.subtasks.filter((st) => st.id !== subtaskId);
 
     setSelectedIssue({ ...selectedIssue, subtasks: nextSubtasks });
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, subtasks: nextSubtasks } : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? { ...i, subtasks: nextSubtasks }
+          : i
+      )
     );
     dataService.deleteSubtask(selectedIssue.id, subtaskId);
 
@@ -139,16 +159,19 @@ export const IssueDetailDrawer: React.FC = () => {
       await repo.deleteSubtask(selectedIssue.id, subtaskId);
     } catch (e) {
       console.warn('Notice al eliminar subtarea en Supabase:', e);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     }
   };
 
   const handlePriorityChange = async (priority: Priority) => {
     if (!selectedIssue) return;
     setSelectedIssue({ ...selectedIssue, priority });
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, priority } : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? { ...i, priority }
+          : i
+      )
     );
     dataService.updateIssuePriority(selectedIssue.id, priority);
 
@@ -156,7 +179,7 @@ export const IssueDetailDrawer: React.FC = () => {
       await repo.setPriority(selectedIssue.id, priority);
     } catch (e) {
       console.warn('Notice al cambiar prioridad en Supabase:', e);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     }
   };
 
@@ -177,9 +200,12 @@ export const IssueDetailDrawer: React.FC = () => {
     const nextComments = [...selectedIssue.comments, newCommentObj];
 
     setSelectedIssue({ ...selectedIssue, comments: nextComments });
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, comments: nextComments } : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? { ...i, comments: nextComments }
+          : i
+      )
     );
     dataService.addComment(selectedIssue.id, author, content);
 
@@ -187,7 +213,7 @@ export const IssueDetailDrawer: React.FC = () => {
       await repo.addComment(selectedIssue.id, author, content);
     } catch (e) {
       console.warn('Notice al agregar comentario en Supabase:', e);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     }
   };
 
@@ -196,9 +222,12 @@ export const IssueDetailDrawer: React.FC = () => {
     if (!selectedIssue || selectedIssue.status === newStatus) return;
 
     // 1. Actualización optimista inmediata en React Query, drawer y dataService
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? { ...i, status: newStatus } : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? { ...i, status: newStatus }
+          : i
+      )
     );
     dataService.moveIssue(selectedIssue.id, newStatus);
     setSelectedIssue({ ...selectedIssue, status: newStatus });
@@ -208,7 +237,7 @@ export const IssueDetailDrawer: React.FC = () => {
       await repo.move(selectedIssue.id, newStatus);
     } catch (err) {
       console.warn('Notice al mover issue en Supabase desde Drawer:', err);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     }
 
     // 3. Sincronizar estado a GitHub
@@ -258,9 +287,12 @@ export const IssueDetailDrawer: React.FC = () => {
 
     // 1. Actualización optimista inmediata en Drawer, React Query y dataService
     setSelectedIssue(updatedIssue);
-    queryClient.setQueriesData<Issue[]>(
-      { queryKey: ['issues'] },
-      (old) => (old ? old.map((i) => (i.id === selectedIssue.id ? updatedIssue : i)) : old)
+    updateIssueCaches((old) =>
+      old.map((i) =>
+        i.id === selectedIssue.id && (!selectedIssue.repositoryId || i.repositoryId === selectedIssue.repositoryId)
+          ? updatedIssue
+          : i
+      )
     );
     dataService.updateIssue(selectedIssue.id, updatedIssue);
 
@@ -276,7 +308,7 @@ export const IssueDetailDrawer: React.FC = () => {
       });
     } catch (err: any) {
       console.warn('Notice al actualizar issue en Supabase:', err);
-      queryClient.invalidateQueries({ queryKey: ['issues'] });
+      invalidateIssueCaches();
     }
 
     // 3. GitHub Issue Update (bidirectional)
@@ -303,7 +335,7 @@ export const IssueDetailDrawer: React.FC = () => {
 
     setIsSaving(false);
     setIsEditing(false);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    invalidateIssueCaches();
   };
 
   // Eliminar el issue (CRUD Delete)
@@ -333,7 +365,7 @@ export const IssueDetailDrawer: React.FC = () => {
 
     setIsDeleting(false);
     setSelectedIssue(null);
-    queryClient.invalidateQueries({ queryKey: ['issues'] });
+    invalidateIssueCaches();
   };
 
   const completedSubtasks = selectedIssue.subtasks.filter((s) => s.completed).length;
@@ -349,7 +381,7 @@ export const IssueDetailDrawer: React.FC = () => {
       <div className="h-14 px-3 sm:px-4 gap-2 bg-surface-subtle dark:bg-dark-surface-elevated border-b border-border-subtle dark:border-dark-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="font-mono text-xs text-text-secondary dark:text-dark-text-muted truncate max-w-[95px] sm:max-w-[140px]">
-            {activeRepoFullName || 'repositorio'}
+            {selectedIssue.projectName || activeRepoFullName || 'repositorio'}
           </span>
           <span className="text-text-muted shrink-0">/</span>
           <span className="font-mono text-xs text-brand dark:text-dark-brand font-bold shrink-0">
@@ -402,7 +434,7 @@ export const IssueDetailDrawer: React.FC = () => {
           </div>
 
           <a
-            href={`https://github.com/${activeRepoFullName}/issues/${selectedIssue.id}`}
+            href={`https://github.com/${selectedIssue.projectName || activeRepoFullName}/issues/${selectedIssue.id}`}
             target="_blank"
             rel="noreferrer"
             className="p-1 rounded text-text-secondary dark:text-dark-text-muted hover:text-text-primary dark:hover:text-white hover:bg-surface dark:hover:bg-dark-surface transition-colors"

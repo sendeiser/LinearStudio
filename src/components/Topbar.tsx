@@ -52,6 +52,7 @@ export const Topbar: React.FC = () => {
     try {
       await githubService.syncRepoIssuesToSupabase(activeRepoFullName, tok);
       queryClient.invalidateQueries({ queryKey: ['issues'] });
+      queryClient.invalidateQueries({ queryKey: ['all-federated-issues'] });
     } catch (err: any) {
       console.error('Error al sincronizar issues:', err);
       alert(`Error al sincronizar con GitHub: ${err.message || 'Verifica tu conexión y permisos del token'}`);
